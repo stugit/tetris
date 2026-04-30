@@ -336,6 +336,73 @@ document.addEventListener('keydown', e => {
     }
 });
 
+// ─── Touch / Swipe ────────────────────────────────────────────────────────────
+let touchX0, touchY0, touchT0;
+let dasTimer = null, dasInterval = null;
+
+function startRepeat(action) {
+    if (gameState !== 'playing') return;
+    action();
+    dasTimer = setTimeout(() => {
+        dasInterval = setInterval(() => {
+            if (gameState === 'playing') action(); else stopRepeat();
+        }, 50);
+    }, 150);
+}
+
+function stopRepeat() {
+    clearTimeout(dasTimer);
+    clearInterval(dasInterval);
+    dasTimer = dasInterval = null;
+}
+
+// Swipe / tap on the canvas
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    touchX0 = e.touches[0].clientX;
+    touchY0 = e.touches[0].clientY;
+    touchT0 = Date.now();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (gameState === 'idle' || gameState === 'over') { startGame(); return; }
+    if (gameState === 'paused') { pauseGame(); return; }
+    if (gameState !== 'playing') return;
+    const dx  = e.changedTouches[0].clientX - touchX0;
+    const dy  = e.changedTouches[0].clientY - touchY0;
+    const dt  = Date.now() - touchT0;
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+    if (adx < 15 && ady < 15) {
+        rotate();                                          // tap → rotate
+    } else if (adx > ady) {
+        if (dx < 0) moveLeft(); else moveRight();          // horizontal swipe
+    } else if (dy > 30) {
+        if (ady / dt > 0.5) hardDrop();                   // fast swipe down → hard drop
+        else { moveDown(); dropTimer = 0; }               // slow swipe down → soft drop
+    }
+    draw();
+}, { passive: false });
+
+// On-screen buttons (with DAS for held directions)
+function addBtn(id, action, repeat = false) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const press = () => { if (repeat) startRepeat(action); else if (gameState === 'playing') action(); };
+    const release = () => { if (repeat) stopRepeat(); };
+    el.addEventListener('touchstart', e => { e.preventDefault(); press(); }, { passive: false });
+    el.addEventListener('touchend',   e => { e.preventDefault(); release(); }, { passive: false });
+    el.addEventListener('mousedown',  press);
+    el.addEventListener('mouseup',    release);
+    el.addEventListener('mouseleave', release);
+}
+
+addBtn('btn-left',   moveLeft,                           true);
+addBtn('btn-right',  moveRight,                          true);
+addBtn('btn-rotate', rotate,                             false);
+addBtn('btn-soft',   () => { if (moveDown()) dropTimer = 0; }, true);
+addBtn('btn-hard',   hardDrop,                           false);
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
 highScore               = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
