@@ -1,0 +1,116 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #0f0f1a;
+    color: #e0e0f0;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 24px 16px;
+}
+
+#wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+h1 {
+    font-size: 2.4rem;
+    letter-spacing: 0.3em;
+    color: #c084fc;
+    text-shadow: 0 0 20px #a855f7;
+}
+
+#game-area {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+#canvas-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+#board {
+    display: block;
+    border: 2px solid #3b3b5c;
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.2);
+}
+
+#overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 26, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+#overlay-msg {
+    color: #e0e0f0;
+    font-size: 1rem;
+    text-align: center;
+    padding: 16px 24px;
+    border: 1px solid #3b3b5c;
+    background: #16213e;
+    line-height: 1.6;
+    max-width: 200px;
+    white-space: pre-line;
+}
+
+#panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 140px;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: #16213e;
+    border: 1px solid #2a2a4a;
+    padding: 10px 12px;
+}
+
+.label {
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: #7070a0;
+}
+
+.stat span:last-child {
+    font-size: 1.4rem;
+    color: #c084fc;
+}
+
+#next-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #16213e;
+    border: 1px solid #2a2a4a;
+    padding: 10px 12px;
+}
+
+#next {
+    display: block;
+    align-self: center;
+}
+
+#controls {
+    font-size: 0.7rem;
+    color: #505080;
+    line-height: 1.8;
+}
