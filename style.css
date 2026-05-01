@@ -115,40 +115,9 @@ h1 {
     line-height: 1.8;
 }
 
-/* ─── Touch controls ───────────────────────────────────────────────────── */
-#touch-controls {
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-    width: 300px;
-}
-
-.touch-row {
-    display: flex;
-    gap: 10px;
-}
-
-.touch-btn {
-    flex: 1;
-    background: #16213e;
-    border: 1px solid #3b3b5c;
-    color: #e0e0f0;
-    font-family: 'Courier New', monospace;
-    font-size: 1.3rem;
-    padding: 16px 0;
-    cursor: pointer;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: none;
-}
-
-.touch-btn:active {
-    background: #2a2a4a;
-    color: #c084fc;
-}
-
-.touch-btn.wide {
-    flex: 2;
+.gesture-hint {
+    color: #3a3a60;
+    margin-top: 4px;
 }
 
 /* ─── Responsive: stack on mobile / touch screens ──────────────────────── */
@@ -176,6 +145,4 @@ h1 {
     }
 
     #controls { display: none; }
-
-    #touch-controls { display: flex; }
 }

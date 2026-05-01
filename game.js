@@ -337,31 +337,14 @@ document.addEventListener('keydown', e => {
 });
 
 // ─── Touch / Swipe ────────────────────────────────────────────────────────────
-let touchX0, touchY0, touchT0;
-let dasTimer = null, dasInterval = null;
+let touchX0, touchY0;
+let lastTapTime = 0;
+let gameScale   = 1;   // kept in sync by scaleToFit(); converts viewport px → board cells
 
-function startRepeat(action) {
-    if (gameState !== 'playing') return;
-    action();
-    dasTimer = setTimeout(() => {
-        dasInterval = setInterval(() => {
-            if (gameState === 'playing') action(); else stopRepeat();
-        }, 50);
-    }, 150);
-}
-
-function stopRepeat() {
-    clearTimeout(dasTimer);
-    clearInterval(dasInterval);
-    dasTimer = dasInterval = null;
-}
-
-// Swipe / tap on the canvas
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     touchX0 = e.touches[0].clientX;
     touchY0 = e.touches[0].clientY;
-    touchT0 = Date.now();
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
@@ -369,47 +352,45 @@ canvas.addEventListener('touchend', e => {
     if (gameState === 'idle' || gameState === 'over') { startGame(); return; }
     if (gameState === 'paused') { pauseGame(); return; }
     if (gameState !== 'playing') return;
-    const dx  = e.changedTouches[0].clientX - touchX0;
-    const dy  = e.changedTouches[0].clientY - touchY0;
-    const dt  = Date.now() - touchT0;
-    const adx = Math.abs(dx), ady = Math.abs(dy);
-    if (adx < 15 && ady < 15) {
-        rotate();                                          // tap → rotate
+
+    const dx    = e.changedTouches[0].clientX - touchX0;
+    const dy    = e.changedTouches[0].clientY - touchY0;
+    const adx   = Math.abs(dx), ady = Math.abs(dy);
+    const cellPx = CELL * gameScale;   // how many viewport px wide one board cell appears
+
+    if (adx < 20 && ady < 20) {
+        // Tap: single → rotate CW; double (within 300 ms) → hard drop
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+            hardDrop();
+            lastTapTime = 0;
+        } else {
+            rotate();
+            lastTapTime = now;
+        }
     } else if (adx > ady) {
-        if (dx < 0) moveLeft(); else moveRight();          // horizontal swipe
-    } else if (dy > 30) {
-        if (ady / dt > 0.5) hardDrop();                   // fast swipe down → hard drop
-        else { moveDown(); dropTimer = 0; }               // slow swipe down → soft drop
+        // Horizontal swipe → move; distance proportional to cells crossed
+        const steps = Math.max(1, Math.round(adx / cellPx));
+        for (let i = 0; i < steps; i++) {
+            if (dx < 0) moveLeft(); else moveRight();
+        }
+    } else if (dy > 0) {
+        // Downward swipe → soft-drop, proportional to distance
+        const steps = Math.max(1, Math.round(ady / cellPx));
+        for (let i = 0; i < steps; i++) {
+            if (!moveDown()) break;
+        }
+        dropTimer = 0;
     }
+
     draw();
 }, { passive: false });
 
-// On-screen buttons (with DAS for held directions)
-function addBtn(id, action, repeat = false) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const press = () => { if (repeat) startRepeat(action); else if (gameState === 'playing') action(); };
-    const release = () => { if (repeat) stopRepeat(); };
-    el.addEventListener('touchstart', e => { e.preventDefault(); press(); }, { passive: false });
-    el.addEventListener('touchend',   e => { e.preventDefault(); release(); }, { passive: false });
-    el.addEventListener('mousedown',  press);
-    el.addEventListener('mouseup',    release);
-    el.addEventListener('mouseleave', release);
-}
-
-addBtn('btn-left',   moveLeft,                           true);
-addBtn('btn-right',  moveRight,                          true);
-addBtn('btn-rotate', rotate,                             false);
-addBtn('btn-soft',   () => { if (moveDown()) dropTimer = 0; }, true);
-addBtn('btn-hard',   hardDrop,                           false);
-
-// Overlay covers the canvas when idle/paused/over, so touch events hit the overlay, not the canvas.
-// Mirror the canvas touch handler here so tapping the overlay starts/resumes the game.
+// Overlay covers the canvas when idle/paused/over, so touches land here, not canvas.
 overlay.addEventListener('touchstart', e => {
     e.preventDefault();
     touchX0 = e.touches[0].clientX;
     touchY0 = e.touches[0].clientY;
-    touchT0 = Date.now();
 }, { passive: false });
 
 overlay.addEventListener('touchend', e => {
@@ -441,6 +422,7 @@ function scaleToFit() {
     const availH = vh - parseFloat(bs.paddingTop)   - parseFloat(bs.paddingBottom);
     const scale  = Math.min(availW / wrapper.offsetWidth, availH / wrapper.offsetHeight, 1);
 
+    gameScale = scale;   // keep touch handler in sync
     if (scale < 1) {
         wrapper.style.transform       = `scale(${scale})`;
         wrapper.style.transformOrigin = 'top center';
