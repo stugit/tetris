@@ -1,0 +1,73 @@
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint with auto-fix
+        run: npm run lint:fix
+
+      # Push any auto-fixes back to main. [skip ci] prevents an extra loop run.
+      - name: Commit auto-fixes
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git diff --quiet || (
+            git add game.js &&
+            git commit -m "ci: auto-fix lint [skip ci]" &&
+            git push
+          )
+
+      - name: Fail on remaining lint errors
+        run: npm run lint
+
+  deploy:
+    needs: lint
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      # Checkout ref (not SHA) to pick up any auto-fix commit the lint job pushed.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - uses: actions/configure-pages@v4
+
+      # Copy only the three game files — keeps node_modules out of the artifact.
+      - name: Bundle site
+        run: mkdir dist && cp index.html style.css game.js dist/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

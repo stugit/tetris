@@ -403,6 +403,56 @@ addBtn('btn-rotate', rotate,                             false);
 addBtn('btn-soft',   () => { if (moveDown()) dropTimer = 0; }, true);
 addBtn('btn-hard',   hardDrop,                           false);
 
+// Overlay covers the canvas when idle/paused/over, so touch events hit the overlay, not the canvas.
+// Mirror the canvas touch handler here so tapping the overlay starts/resumes the game.
+overlay.addEventListener('touchstart', e => {
+    e.preventDefault();
+    touchX0 = e.touches[0].clientX;
+    touchY0 = e.touches[0].clientY;
+    touchT0 = Date.now();
+}, { passive: false });
+
+overlay.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (gameState === 'idle' || gameState === 'over') { startGame(); return; }
+    if (gameState === 'paused') { pauseGame(); return; }
+}, { passive: false });
+
+// Allow clicking the overlay with a mouse to start/resume as well.
+overlay.addEventListener('click', () => {
+    if (gameState === 'idle' || gameState === 'over') startGame();
+    else if (gameState === 'paused') pauseGame();
+});
+
+// ─── Fit to viewport ──────────────────────────────────────────────────────────
+// Scales the entire #wrapper down (CSS transform) so the game fits on screen
+// without scrolling on any phone. Does not affect canvas resolution.
+function scaleToFit() {
+    const wrapper = document.getElementById('wrapper');
+    wrapper.style.transform = 'none';
+    document.body.style.overflow = '';
+    document.body.style.height   = '';
+    void wrapper.offsetWidth;                                   // force reflow before measuring
+
+    const vw    = window.innerWidth;
+    const vh    = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const bs    = getComputedStyle(document.body);
+    const availW = vw - parseFloat(bs.paddingLeft)  - parseFloat(bs.paddingRight);
+    const availH = vh - parseFloat(bs.paddingTop)   - parseFloat(bs.paddingBottom);
+    const scale  = Math.min(availW / wrapper.offsetWidth, availH / wrapper.offsetHeight, 1);
+
+    if (scale < 1) {
+        wrapper.style.transform       = `scale(${scale})`;
+        wrapper.style.transformOrigin = 'top center';
+        document.body.style.height    = vh + 'px';
+        document.body.style.overflow  = 'hidden';
+    }
+}
+
+window.addEventListener('load', scaleToFit);
+window.addEventListener('resize', scaleToFit);
+window.addEventListener('orientationchange', () => setTimeout(scaleToFit, 400));
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
 highScore               = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
