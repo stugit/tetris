@@ -339,7 +339,6 @@ document.addEventListener('keydown', e => {
 // ─── Touch / Swipe ────────────────────────────────────────────────────────────
 let touchX0, touchY0;
 let lastTapTime = 0;
-let gameScale   = 1;   // kept in sync by scaleToFit(); converts viewport px → board cells
 
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
@@ -353,10 +352,9 @@ canvas.addEventListener('touchend', e => {
     if (gameState === 'paused') { pauseGame(); return; }
     if (gameState !== 'playing') return;
 
-    const dx    = e.changedTouches[0].clientX - touchX0;
-    const dy    = e.changedTouches[0].clientY - touchY0;
-    const adx   = Math.abs(dx), ady = Math.abs(dy);
-    const cellPx = CELL * gameScale;   // how many viewport px wide one board cell appears
+    const dx  = e.changedTouches[0].clientX - touchX0;
+    const dy  = e.changedTouches[0].clientY - touchY0;
+    const adx = Math.abs(dx), ady = Math.abs(dy);
 
     if (adx < 20 && ady < 20) {
         // Tap: single → rotate CW; double (within 300 ms) → hard drop
@@ -369,17 +367,11 @@ canvas.addEventListener('touchend', e => {
             lastTapTime = now;
         }
     } else if (adx > ady) {
-        // Horizontal swipe → move; distance proportional to cells crossed
-        const steps = Math.max(1, Math.round(adx / cellPx));
-        for (let i = 0; i < steps; i++) {
-            if (dx < 0) moveLeft(); else moveRight();
-        }
+        // Horizontal swipe → exactly one cell per gesture
+        if (dx < 0) moveLeft(); else moveRight();
     } else if (dy > 0) {
-        // Downward swipe → soft-drop, proportional to distance
-        const steps = Math.max(1, Math.round(ady / cellPx));
-        for (let i = 0; i < steps; i++) {
-            if (!moveDown()) break;
-        }
+        // Downward swipe → one soft-drop row
+        moveDown();
         dropTimer = 0;
     }
 
@@ -422,7 +414,6 @@ function scaleToFit() {
     const availH = vh - parseFloat(bs.paddingTop)   - parseFloat(bs.paddingBottom);
     const scale  = Math.min(availW / wrapper.offsetWidth, availH / wrapper.offsetHeight, 1);
 
-    gameScale = scale;   // keep touch handler in sync
     if (scale < 1) {
         wrapper.style.transform       = `scale(${scale})`;
         wrapper.style.transformOrigin = 'top center';
