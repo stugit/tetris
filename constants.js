@@ -54,9 +54,41 @@ export const PIECES = {
 
 export const PIECE_TYPES = Object.keys(PIECES);
 export const SCORE_TABLE  = [0, 100, 300, 500, 800];
+export const TSPIN_SCORES = [400, 800, 1200, 1600]; // 0, 1, 2, 3 lines
+export const COMBO_BONUS  = 50;
+export const B2B_MULTIPLIER = 1.5;
 export const BASE_SPEED   = 800;
 export const MIN_SPEED    = 100;
 export const SPEED_STEP   = 50;
 
 export const STORAGE_KEY = 'tetrisHighScore';
 export const PERFECT_CLEAR_BONUS = 3000;
+
+export const DEFAULT_DAS = 150; // ms - Delayed Auto-Shift
+export const DEFAULT_ARR = 30;  // ms - Auto-Repeat Rate
+export const DEFAULT_SDR = 20;  // multiplier for soft drop speed
+export const STORAGE_KEY_DAS = 'tetrisDAS';
+export const STORAGE_KEY_ARR = 'tetrisARR';
+export const STORAGE_KEY_SDR = 'tetrisSDR';
+
+export const SRS_KICKS = {
+    '0-1': [[0, 0], [-1, 0], [-1, -1], [ 0,  2], [-1,  2]],
+    '1-0': [[0, 0], [ 1, 0], [ 1,  1], [ 0, -2], [ 1, -2]],
+    '1-2': [[0, 0], [ 1, 0], [ 1,  1], [ 0, -2], [ 1, -2]],
+    '2-1': [[0, 0], [-1, 0], [-1, -1], [ 0,  2], [-1,  2]],
+    '2-3': [[0, 0], [ 1, 0], [ 1, -1], [ 0,  2], [ 1, -2]],
+    '3-2': [[0, 0], [-1, 0], [-1,  1], [ 0, -2], [-1,  2]],
+    '3-0': [[0, 0], [-1, 0], [-1,  1], [ 0, -2], [-1,  2]],
+    '0-3': [[0, 0], [ 1, 0], [ 1, -1], [ 0,  2], [ 1, -2]]
+};
+
+export const SRS_KICKS_I = {
+    '0-1': [[0, 0], [-2, 0], [ 1, 0], [-2,  1], [ 1, -2]],
+    '1-0': [[0, 0], [ 2, 0], [-1, 0], [ 2, -1], [-1,  2]],
+    '1-2': [[0, 0], [-1, 0], [ 2, 0], [-1, -2], [ 2,  1]],
+    '2-1': [[0, 0], [ 1, 0], [-2, 0], [ 1,  2], [-2, -1]],
+    '2-3': [[0, 0], [ 2, 0], [-1, 0], [ 2, -1], [-1,  2]],
+    '3-2': [[0, 0], [-2, 0], [ 1, 0], [-2,  1], [ 1, -2]],
+    '3-0': [[0, 0], [ 1, 0], [-2, 0], [ 1,  2], [-2, -1]],
+    '0-3': [[0, 0], [-1, 0], [ 2, 0], [-1, -2], [ 2,  1]]
+};

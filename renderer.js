@@ -38,9 +38,45 @@ export function drawPreview(context, canvasObj, type, isUsed = false) {
     context.globalAlpha = 1;
 }
 
+export function drawNextQueue(context, canvasObj, queue) {
+    context.fillStyle = '#16213e';
+    context.fillRect(0, 0, canvasObj.width, canvasObj.height);
+    if (!queue || queue.length === 0) return;
+
+    queue.forEach((type, index) => {
+        const previewCells = PIECES[type][0];
+        const rs = previewCells.map(([r]) => r), cs = previewCells.map(([, c]) => c);
+        const pH = Math.max(...rs) - Math.min(...rs) + 1;
+        const pW = Math.max(...cs) - Math.min(...cs) + 1;
+
+        // Each piece gets a 4-cell high slot (120px)
+        const offC = Math.floor((4 - pW) / 2) - Math.min(...cs);
+        const baseY = index * 4;
+        const offR = baseY + Math.floor((4 - pH) / 2) - Math.min(...rs);
+
+        previewCells.forEach(([r, c]) => {
+            const x = (c + offC) * CELL + 1;
+            const y = (r + offR) * CELL + 1;
+            const s = CELL - 2;
+            context.fillStyle = COLORS[type];
+            context.fillRect(x, y, s, s);
+            context.fillStyle = 'rgba(255,255,255,0.25)';
+            context.fillRect(x, y, s, 3);
+            context.fillRect(x, y, 3, s);
+        });
+    });
+}
+
+let shakeTimer = 0;
+let shakeIntensity = 0;
+
 export function drawBoard(ctx, board, currentPiece, ghostCells) {
+    ctx.save();
+    if (shakeTimer > 0) {
+        ctx.translate((Math.random() - 0.5) * shakeIntensity, (Math.random() - 0.5) * shakeIntensity);
+    }
     ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillRect(-20, -20, ctx.canvas.width + 40, ctx.canvas.height + 40);
 
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     ctx.lineWidth = 1;
@@ -65,6 +101,7 @@ export function drawBoard(ctx, board, currentPiece, ghostCells) {
             drawCell(ctx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
         });
     }
+    ctx.restore();
 }
 
 export function drawLevelUp(ctx, timer) {
@@ -112,6 +149,68 @@ export function drawPerfectClear(ctx, timer) {
     ctx.restore();
 }
 
+export function drawTSpin(ctx, timer, text) {
+    const opacity = Math.min(1, timer / 500);
+    ctx.save();
+    ctx.fillStyle = `rgba(171, 71, 188, ${opacity})`; // T-piece color (#AB47BC)
+    ctx.font = 'bold 24px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 8;
+    
+    const x = ctx.canvas.width / 2;
+    const y = ctx.canvas.height / 2 + 50; // Positioned slightly below center
+    
+    const scale = 1 + (2000 - timer) / 4000;
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+}
+
+export function drawCombo(ctx, timer, count) {
+    const opacity = Math.min(1, timer / 500);
+    ctx.save();
+    ctx.fillStyle = `rgba(102, 187, 106, ${opacity})`; // S-piece color (#66BB6A)
+    ctx.font = 'bold 20px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    const x = ctx.canvas.width / 2;
+    const y = ctx.canvas.height / 2 + 85;
+    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 4;
+    
+    ctx.translate(x, y);
+    ctx.fillText(`${count} COMBO`, 0, 0);
+    ctx.restore();
+}
+
+export function drawB2B(ctx, timer) {
+    const opacity = Math.min(1, timer / 500);
+    ctx.save();
+    ctx.fillStyle = `rgba(239, 83, 80, ${opacity})`; // Z-piece color (#EF5350)
+    ctx.font = 'italic bold 18px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    const x = ctx.canvas.width / 2;
+    const y = ctx.canvas.height / 2 - 85;
+    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 4;
+    
+    // Slight rocking animation
+    const angle = Math.sin(timer / 100) * 0.05;
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillText('BACK-TO-BACK', 0, 0);
+    ctx.restore();
+}
+
 let particles = [];
 
 /**
@@ -131,6 +230,16 @@ export function createExplosion(x, y, color, count = 30) {
             decay: Math.random() * 0.02 + 0.015
         });
     }
+}
+
+export function triggerShake(intensity, duration) {
+    shakeIntensity = intensity;
+    shakeTimer = duration;
+}
+
+export function updateAnimations(delta) {
+    if (shakeTimer > 0) shakeTimer -= delta;
+    updateParticles(delta);
 }
 
 export function updateParticles(delta) {
@@ -156,6 +265,7 @@ export function drawParticles(ctx) {
 
 export function clearParticles() {
     particles = [];
+    shakeTimer = 0;
 }
 
 export function updateUIElements(elements, state) {

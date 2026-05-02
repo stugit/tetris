@@ -1,8 +1,8 @@
 'use strict';
 
-import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS } from './constants.js';
+import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, COMBO_BONUS, B2B_MULTIPLIER } from './constants.js';
 import { AudioManager } from './audio.js';
-import { drawBoard, drawPreview, updateUIElements, drawLevelUp, drawPerfectClear, createExplosion, updateParticles, drawParticles, clearParticles } from './renderer.js';
+import { drawBoard, drawPreview, drawNextQueue, updateUIElements, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, updateParticles, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
 
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('board');
@@ -22,17 +22,29 @@ const UI_ELEMENTS = {
     musicCheck: document.getElementById('music-check'),
     sfxCheck:   document.getElementById('sfx-check'),
     musicVol:   document.getElementById('music-vol'),
-    sfxVol:     document.getElementById('sfx-vol')
+    sfxVol:     document.getElementById('sfx-vol'),
+    dasSlider:  document.getElementById('das-slider'),
+    arrSlider:  document.getElementById('arr-slider'),
+    sdrSlider:  document.getElementById('sdr-slider')
 };
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let board, currentPiece, nextType, holdType, holdUsed;
+let board, currentPiece, nextQueue, holdType, holdUsed;
 let score, highScore, level, linesCleared;
 let gameState;   // 'idle' | 'playing' | 'paused' | 'over'
 let dropTimer, lastTime, animId;
 let lockPending, lockTimer, lockMoves;
 let levelUpTimer;
 let perfectClearTimer;
+let tSpinTimer, tSpinType;
+let comboCount, b2bActive;
+let comboTimer, b2bTimer;
+
+// Configurable gameplay settings
+let das, arr, sdr;
+let activeKeys = {}; // Tracks state of directional keys for DAS/ARR
+
+let lastMoveWasRotate = false;
 const LOCK_DELAY     = 500;
 const MAX_LOCK_MOVES = 15;
 
@@ -64,7 +76,8 @@ function isValid(piece) {
 }
 
 function dropSpeed() {
-    return Math.max(MIN_SPEED, BASE_SPEED - (level - 1) * SPEED_STEP);
+    const baseDrop = Math.max(MIN_SPEED, BASE_SPEED - (level - 1) * SPEED_STEP);
+    return activeKeys.softDrop ? baseDrop / sdr : baseDrop;
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -83,8 +96,19 @@ function initGame() {
     lockMoves    = 0;
     levelUpTimer = 0;
     perfectClearTimer = 0;
+    tSpinTimer   = 0;
+    comboCount   = 0;
+    b2bActive    = false;
+    comboTimer   = 0;
+    b2bTimer     = 0;
+    das = parseInt(localStorage.getItem(STORAGE_KEY_DAS) || DEFAULT_DAS, 10);
+    arr = parseInt(localStorage.getItem(STORAGE_KEY_ARR) || DEFAULT_ARR, 10);
+    sdr = parseInt(localStorage.getItem(STORAGE_KEY_SDR) || DEFAULT_SDR, 10);
+
+    activeKeys = {}; // Clear all active keys
+    lastMoveWasRotate = false;
     clearParticles();
-    nextType     = randomType();
+    nextQueue    = [randomType(), randomType(), randomType()];
     spawnPiece();
     updateUI();
 }
@@ -93,8 +117,10 @@ function spawnPiece() {
     lockPending  = false;
     lockTimer    = 0;
     lockMoves    = 0;
-    currentPiece = { type: nextType, rotation: 0, row: 0, col: 3 };
-    nextType     = randomType();
+    lastMoveWasRotate = false;
+    const type   = nextQueue.shift();
+    currentPiece = { type, rotation: 0, row: 0, col: 3 };
+    nextQueue.push(randomType());
     if (!isValid(currentPiece)) gameOver();
 }
 
@@ -104,7 +130,8 @@ function moveLeft() {
     if (isValid(p)) {
         currentPiece = p;
         AudioManager.sfx('move');
-        if (lockPending) handleLockReset();
+        if (lockPending) handleLockReset(); // Movement resets lock timer
+        lastMoveWasRotate = false;
     }
 }
 
@@ -113,7 +140,8 @@ function moveRight() {
     if (isValid(p)) {
         currentPiece = p;
         AudioManager.sfx('move');
-        if (lockPending) handleLockReset();
+        if (lockPending) handleLockReset(); // Movement resets lock timer
+        lastMoveWasRotate = false;
     }
 }
 
@@ -123,8 +151,8 @@ function tryMoveDown() {
     return false;
 }
 
-function moveDown() {
-    if (tryMoveDown()) { dropTimer = 0; return true; }
+function softDrop() { // Renamed from moveDown
+    if (tryMoveDown()) { dropTimer = 0; lastMoveWasRotate = false; return true; }
     if (!lockPending) {
         lockPending = true;
         lockTimer   = LOCK_DELAY;
@@ -137,22 +165,27 @@ function hardDrop() {
     lockPending = false;
     lockTimer   = 0;
     lockMoves   = 0;
-    while (isValid({ ...currentPiece, row: currentPiece.row + 1 })) {
-        currentPiece = { ...currentPiece, row: currentPiece.row + 1 };
-    }
+    while (tryMoveDown()) {} // Move down until collision
+    triggerShake(4, 100);    // Subtle shake on impact
     lockPiece();
     dropTimer = 0;
 }
 
-function rotate() {
-    const nextRot = (currentPiece.rotation + 1) % 4;
-    // Try plain rotation then wall-kicks: ±1, ±2 columns
-    for (const kick of [0, -1, 1, -2, 2]) {
-        const p = { ...currentPiece, rotation: nextRot, col: currentPiece.col + kick };
+function rotate(dir = 1) {
+    if (currentPiece.type === 'O') return;
+
+    const startRot = currentPiece.rotation;
+    const nextRot = (startRot + dir + 4) % 4;
+    const key = `${startRot}-${nextRot}`;
+    const kicks = currentPiece.type === 'I' ? SRS_KICKS_I[key] : SRS_KICKS[key];
+
+    for (const [dc, dr] of kicks) {
+        const p = { ...currentPiece, rotation: nextRot, col: currentPiece.col + dc, row: currentPiece.row + dr };
         if (isValid(p)) {
             currentPiece = p;
             AudioManager.sfx('rotate');
             if (lockPending) handleLockReset();
+            lastMoveWasRotate = true;
             return;
         }
     }
@@ -164,6 +197,7 @@ function holdPiece() {
     lockPending = false;
     lockTimer   = 0;
     lockMoves   = 0;
+    lastMoveWasRotate = false;
     if (holdType === null) {
         holdType = currentPiece.type;
         spawnPiece();
@@ -186,21 +220,71 @@ function handleLockReset() {
     }
 }
 
+function checkTSpin() {
+    if (currentPiece.type !== 'T' || !lastMoveWasRotate) return false;
+    const { row: r, col: c } = currentPiece;
+    // Check the 4 corners relative to the T-piece center (1,1)
+    const corners = [
+        [r, c], [r, c + 2], [r + 2, c], [r + 2, c + 2]
+    ];
+    let occupied = 0;
+    corners.forEach(([cr, cc]) => {
+        if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS || board[cr][cc]) {
+            occupied++;
+        }
+    });
+    return occupied >= 3;
+}
+
 // ─── Locking & Line Clearing ──────────────────────────────────────────────────
 function lockPiece() {
     holdUsed = false;
+    const isTSpin = checkTSpin();
     cells(currentPiece).forEach(([r, c]) => { board[r][c] = COLORS[currentPiece.type]; });
     const cleared = clearLines();
-    if (cleared > 0) {
+
+    if (cleared > 0 || isTSpin) {
         const isPerfectClear = board.every(row => row.every(cell => cell === null));
+        const difficultClear = (cleared === 4 || (isTSpin && cleared > 0));
+        
         let points = SCORE_TABLE[cleared];
+
+        if (isTSpin) {
+            points = TSPIN_SCORES[cleared] || points;
+            tSpinType = cleared === 0 ? 'T-SPIN' : `T-SPIN ${['','SINGLE','DOUBLE','TRIPLE'][cleared]}`;
+            tSpinTimer = 2000;
+            createExplosion(canvas.width / 2, canvas.height / 2, COLORS.T, 40);
+        }
+
+        // Back-to-Back Logic
+        if (difficultClear) {
+            if (b2bActive) {
+                points *= B2B_MULTIPLIER;
+                b2bTimer = 2000;
+            }
+            b2bActive = true;
+        } else if (cleared > 0) {
+            b2bActive = false;
+        }
+
+        // Combo Logic
+        if (cleared > 0) {
+            if (comboCount > 0) {
+                points += COMBO_BONUS * comboCount * level;
+                comboTimer = 2000;
+            }
+            comboCount++;
+        }
+
         if (isPerfectClear) {
             points += PERFECT_CLEAR_BONUS;
             perfectClearTimer = 2000;
             createExplosion(canvas.width / 2, canvas.height / 2, '#ffd700', 100);
+            triggerShake(15, 500); // Massive shake for All Clear
         }
         if (cleared === 4) {
             createExplosion(canvas.width / 2, canvas.height / 2, COLORS.I, 60);
+            triggerShake(10, 300); // Strong shake for Tetris
         }
         score        += points * level;
         linesCleared += cleared;
@@ -213,6 +297,7 @@ function lockPiece() {
         AudioManager.sfx('clear', cleared);
         updateUI();
     } else {
+        comboCount = 0;
         AudioManager.sfx('land');
     }
     spawnPiece();
@@ -241,10 +326,13 @@ function ghostPiece() {
 
 function draw() {
     drawBoard(ctx, board, currentPiece, cells(ghostPiece()));
-    drawPreview(nextCtx, nextCanvas, nextType);
+    drawNextQueue(nextCtx, nextCanvas, nextQueue);
     drawPreview(holdCtx, holdCanvas, holdType, holdUsed);
     if (levelUpTimer > 0) drawLevelUp(ctx, levelUpTimer);
     if (perfectClearTimer > 0) drawPerfectClear(ctx, perfectClearTimer);
+    if (tSpinTimer > 0) drawTSpin(ctx, tSpinTimer, tSpinType);
+    if (comboTimer > 0) drawCombo(ctx, comboTimer, comboCount - 1);
+    if (b2bTimer > 0) drawB2B(ctx, b2bTimer);
     drawParticles(ctx);
 }
 
@@ -310,7 +398,28 @@ function loop(timestamp) {
 
     if (levelUpTimer > 0) levelUpTimer -= delta;
     if (perfectClearTimer > 0) perfectClearTimer -= delta;
-    updateParticles(delta);
+    if (tSpinTimer > 0) tSpinTimer -= delta;
+    if (comboTimer > 0) comboTimer -= delta;
+    if (b2bTimer > 0) b2bTimer -= delta;
+    updateAnimations(delta);
+
+    // Handle DAS/ARR for horizontal movement
+    if (activeKeys.left) {
+        activeKeys.left.timeHeld += delta;
+        if (activeKeys.left.timeHeld >= das && (timestamp - activeKeys.left.lastActionTime) >= Math.max(16, arr)) {
+            moveLeft();
+            activeKeys.left.lastActionTime = timestamp;
+        }
+    }
+    if (activeKeys.right) {
+        activeKeys.right.timeHeld += delta;
+        if (activeKeys.right.timeHeld >= das && (timestamp - activeKeys.right.lastActionTime) >= Math.max(16, arr)) {
+            moveRight();
+            activeKeys.right.lastActionTime = timestamp;
+        }
+    }
+
+    // Soft drop auto-repeat is handled by the modified dropSpeed
 
     if (lockPending) {
         lockTimer -= delta;
@@ -337,36 +446,66 @@ function loop(timestamp) {
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
+const KEY_MAP = {
+    'ArrowLeft':  'left',
+    'ArrowRight': 'right',
+    'ArrowDown':  'softDrop',
+    'ArrowUp':    'rotateCW',
+    'KeyZ':       'rotateCCW',
+    'KeyC':       'hold',
+    'ShiftLeft':  'hold',
+    'ShiftRight': 'hold',
+    'Space':      'hardDrop',
+    'KeyP':       'pause',
+    'KeyM':       'mute',
+};
+
 document.addEventListener('keydown', e => {
-    if (e.code === 'Space') {
-        e.preventDefault();
+    if (e.repeat) return; // Ignore native key repeat
+
+    const action = KEY_MAP[e.code];
+    if (!action) return;
+    e.preventDefault();
+
+    if (action === 'hardDrop') {
         if (gameState === 'idle' || gameState === 'over') startGame();
         else if (gameState === 'playing') hardDrop();
         return;
     }
-    if (e.code === 'KeyP') {
+    if (action === 'pause') {
         if (gameState === 'playing' || gameState === 'paused') pauseGame();
         return;
     }
-    if (e.code === 'KeyM') {
-        // Master toggle: if anything is unmuted, mute all. Otherwise unmute all.
+    if (action === 'mute') {
         const target = !(AudioManager.musicMuted && AudioManager.sfxMuted);
         AudioManager.setMusicMuted(target);
         AudioManager.setSfxMuted(target);
         updateUI();
         return;
     }
+
     if (gameState !== 'playing') return;
-    switch (e.code) {
-        case 'ArrowLeft':  e.preventDefault(); moveLeft();   break;
-        case 'ArrowRight': e.preventDefault(); moveRight();  break;
-        case 'ArrowDown':  e.preventDefault(); moveDown();   break;
-        case 'ArrowUp':    e.preventDefault(); rotate();     break;
-        case 'KeyZ':       e.preventDefault(); rotate();     break;
-        case 'KeyC':
-        case 'ShiftLeft':
-        case 'ShiftRight': e.preventDefault(); holdPiece();  break;
-    }
+
+    if (action === 'left') {
+        moveLeft();
+        activeKeys.left = { timeHeld: 0, lastActionTime: performance.now() };
+    } else if (action === 'right') {
+        moveRight();
+        activeKeys.right = { timeHeld: 0, lastActionTime: performance.now() };
+    } else if (action === 'softDrop') {
+        softDrop();
+        activeKeys.softDrop = true;
+    } else if (action === 'rotateCW')  rotate(1);
+    else if (action === 'rotateCCW') rotate(-1);
+    else if (action === 'hold')      holdPiece();
+});
+
+document.addEventListener('keyup', e => {
+    const action = KEY_MAP[e.code];
+    if (!action) return;
+    if (action === 'left') delete activeKeys.left;
+    else if (action === 'right') delete activeKeys.right;
+    else if (action === 'softDrop') delete activeKeys.softDrop;
 });
 
 // ─── Touch / Swipe ────────────────────────────────────────────────────────────
@@ -399,7 +538,7 @@ canvas.addEventListener('touchend', e => {
     } else if (dy < 0) {
         hardDrop();   // swipe up → hard drop
     } else {
-        moveDown();   // swipe down → soft drop
+        softDrop();   // swipe down → soft drop
     }
 
     draw();
@@ -475,6 +614,21 @@ UI_ELEMENTS.sfxVol.addEventListener('input', e => {
     localStorage.setItem('tetrisSfxVol', val);
 });
 
+UI_ELEMENTS.dasSlider.addEventListener('input', e => {
+    das = parseInt(e.target.value, 10);
+    localStorage.setItem(STORAGE_KEY_DAS, das);
+});
+
+UI_ELEMENTS.arrSlider.addEventListener('input', e => {
+    arr = parseInt(e.target.value, 10);
+    localStorage.setItem(STORAGE_KEY_ARR, arr);
+});
+
+UI_ELEMENTS.sdrSlider.addEventListener('input', e => {
+    sdr = parseInt(e.target.value, 10);
+    localStorage.setItem(STORAGE_KEY_SDR, sdr);
+});
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
 score                   = 0;
@@ -482,6 +636,14 @@ level                   = 1;
 linesCleared            = 0;
 levelUpTimer            = 0;
 perfectClearTimer       = 0;
+tSpinTimer              = 0;
+comboCount              = 0;
+b2bActive               = false;
+comboTimer              = 0;
+b2bTimer                = 0;
+das                     = parseInt(localStorage.getItem(STORAGE_KEY_DAS) || DEFAULT_DAS, 10);
+arr                     = parseInt(localStorage.getItem(STORAGE_KEY_ARR) || DEFAULT_ARR, 10);
+sdr                     = parseInt(localStorage.getItem(STORAGE_KEY_SDR) || DEFAULT_SDR, 10);
 highScore               = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
 
 const savedMusicVol = localStorage.getItem('tetrisMusicVol');
@@ -494,6 +656,11 @@ if (savedSfxVol !== null) {
     UI_ELEMENTS.sfxVol.value = savedSfxVol;
     AudioManager.setSfxVolume(parseFloat(savedSfxVol));
 }
+
+// Set initial slider values
+UI_ELEMENTS.dasSlider.value = das;
+UI_ELEMENTS.arrSlider.value = arr;
+UI_ELEMENTS.sdrSlider.value = sdr;
 
 updateUI();
 ctx.fillStyle           = '#1a1a2e';
