@@ -1,3 +1,10 @@
+## [1.11.0](https://github.com/stugit/tetris/compare/v1.10.0...v1.11.0) (2026-05-02)
+
+
+### Features
+
+* **audio:** implement gapless soundtrack and refine hard drop feedback ([5b581a8](https://github.com/stugit/tetris/commit/5b581a8d64d21fd21613923f0e221955addf587d))
+
 ## [1.10.0](https://github.com/stugit/tetris/compare/v1.9.0...v1.10.0) (2026-05-02)
 
 
@@ -26,12 +33,4 @@
 ### Features
 
 * optimize desktop layout, add hard drop flash, and fix audio continuity ([2a9bdca](https://github.com/stugit/tetris/commit/2a9bdcaaae3a7530942883505045d7403ea14342))
-
-## [1.6.0](https://github.com/stugit/tetris/compare/v1.5.0...v1.6.0) (2026-05-02)
-
-
-### Features
-
-* complete modern engine with SRS, T-Spins, Zen mode, and immersive visuals ([be8502d](https://github.com/stugit/tetris/commit/be8502d73d000024582d173f53131972ee8c89bb))
-* complete modern engine with SRS, T-Spins, Zen mode, and immersive visuals ([b838fd9](https://github.com/stugit/tetris/commit/b838fd999582aaaa79c29ba972f7d3fcc4b1e908))
 
