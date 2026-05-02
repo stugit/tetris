@@ -63,6 +63,14 @@ git config commit.template .gitmessage
 ```
 When committing, try to follow the **Conventional Commits** format: `type(scope): description`.
 
+## Stable versions
+
+| Tag | Notes |
+|---|---|
+| [`v1.15.0`](https://github.com/stugit/tetris/releases/tag/v1.15.0) | Stable — desktop fills 100 vh, controls as fixed overlay |
+
+To roll back: `git checkout v1.15.0`
+
 ## Deployment
 
 Pushes to `main` automatically lint and deploy to GitHub Pages via the workflow in `.github/workflows/deploy.yml`. To enable for a new fork, go to **Settings → Pages** and set the source to **GitHub Actions**.
