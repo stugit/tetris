@@ -95,6 +95,7 @@ h1 {
     color: #c084fc;
 }
 
+#hold-container,
 #next-container {
     display: flex;
     flex-direction: column;
@@ -120,6 +121,24 @@ h1 {
     margin-top: 4px;
 }
 
+#mute-btn {
+    background: #16213e;
+    border: 1px solid #2a2a4a;
+    color: #505080;
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    padding: 8px 12px;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+}
+
+#mute-btn:hover {
+    border-color: #c084fc;
+    color: #c084fc;
+}
+
 /* ─── Responsive: stack on mobile / touch screens ──────────────────────── */
 @media (max-width: 560px), (pointer: coarse) {
     body { padding: 16px 8px; }
@@ -139,10 +158,12 @@ h1 {
         gap: 8px;
     }
 
-    .stat, #next-container {
+    .stat, #hold-container, #next-container {
         flex: 1;
         min-width: 130px;
     }
 
     #controls { display: none; }
+
+    #mute-btn { min-width: 130px; }
 }

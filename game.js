@@ -62,11 +62,154 @@ const BASE_SPEED   = 800;  // ms per gravity drop
 const MIN_SPEED    = 100;
 const SPEED_STEP   = 50;   // ms reduction per level
 
+// ─── Audio ────────────────────────────────────────────────────────────────────
+const AudioManager = (() => {
+    let actx = null, masterGain = null, musicGain = null;
+    let melodyTimer = null, musicActive = false, muted = false;
+
+    const BPM = 160;
+    const E8  = 60 / BPM / 2; // seconds per eighth note
+
+    const FREQ = {
+        A4:440.00, B4:493.88, C5:523.25, D5:587.33,
+        E5:659.25, F5:698.46, G5:783.99, A5:880.00,
+    };
+
+    // Tetris Type A (Korobeiniki) — [note_key | null, eighth_note_count]
+    const MELODY = [
+        // Part A
+        ['E5',2],['B4',1],['C5',1],['D5',2],['C5',1],['B4',1],
+        ['A4',2],['A4',1],['C5',1],['E5',2],['D5',1],['C5',1],
+        ['B4',3],['C5',1],['D5',2],['E5',2],
+        ['C5',2],['A4',2],['A4',4],
+        // Part B
+        [null,1],['A4',1],['B4',2],['C5',4],
+        ['D5',3],['F5',1],['A5',2],['G5',1],['F5',1],
+        ['E5',3],['C5',1],['E5',2],['D5',1],['C5',1],
+        ['B4',2],['B4',1],['C5',1],['D5',2],['E5',2],
+        ['C5',2],['A4',2],['A4',4],
+    ];
+    const MELODY_S = MELODY.reduce((s, [, e]) => s + e * E8, 0);
+
+    function setup() {
+        actx       = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = actx.createGain();
+        masterGain.gain.value = muted ? 0 : 1;
+        masterGain.connect(actx.destination);
+        musicGain  = actx.createGain();
+        musicGain.gain.value = 0;
+        musicGain.connect(masterGain);
+    }
+
+    function ensureCtx() {
+        if (!actx) setup();
+        if (actx.state === 'suspended') actx.resume();
+    }
+
+    function scheduleLoop(loopStart) {
+        let t = loopStart;
+        for (const [note, eighths] of MELODY) {
+            const dur = eighths * E8;
+            if (note && FREQ[note]) {
+                const osc = actx.createOscillator();
+                const env = actx.createGain();
+                osc.type = 'square';
+                osc.frequency.value = FREQ[note];
+                osc.connect(env);
+                env.connect(musicGain);
+                env.gain.setValueAtTime(0, t);
+                env.gain.linearRampToValueAtTime(1, t + 0.01);
+                env.gain.setValueAtTime(1, t + dur * 0.75);
+                env.gain.linearRampToValueAtTime(0, t + dur * 0.92);
+                osc.start(t);
+                osc.stop(t + dur);
+            }
+            t += dur;
+        }
+        melodyTimer = setTimeout(
+            () => { if (musicActive) scheduleLoop(loopStart + MELODY_S); },
+            (MELODY_S - 0.2) * 1000
+        );
+    }
+
+    function tone(freq, start, dur, wave = 'sine', vol = 0.15) {
+        const osc = actx.createOscillator();
+        const g   = actx.createGain();
+        osc.type = wave;
+        osc.frequency.value = freq;
+        osc.connect(g);
+        g.connect(masterGain);
+        g.gain.setValueAtTime(vol, start);
+        g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+        osc.start(start);
+        osc.stop(start + dur);
+    }
+
+    return {
+        startMusic() {
+            ensureCtx();
+            if (musicActive) return;
+            musicActive = true;
+            musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.3);
+            scheduleLoop(actx.currentTime + 0.05);
+        },
+        pauseMusic() {
+            if (!actx) return;
+            musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.2);
+        },
+        resumeMusic() {
+            if (!actx || muted) return;
+            musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.2);
+        },
+        stopMusic() {
+            musicActive = false;
+            clearTimeout(melodyTimer);
+            if (actx) musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.15);
+        },
+        sfx(type, count = 1) {
+            ensureCtx();
+            if (muted) return;
+            const now = actx.currentTime;
+            switch (type) {
+                case 'move':    tone(220, now, 0.04, 'sine', 0.08); break;
+                case 'rotate':  tone(440, now, 0.06, 'sine', 0.10); break;
+                case 'land':    tone(110, now, 0.10, 'sine', 0.12); break;
+                case 'clear': {
+                    const freqs = [523, 659, 784, 1047, 1319];
+                    freqs.slice(0, Math.min(count + 1, 5)).forEach(
+                        (f, i) => tone(f, now + i * 0.07, 0.20, 'sine', 0.20)
+                    );
+                    break;
+                }
+                case 'levelup':
+                    [523, 659, 784, 1047].forEach(
+                        (f, i) => tone(f, now + i * 0.10, 0.15, 'square', 0.12)
+                    );
+                    break;
+                case 'gameover':
+                    [440, 415, 392, 370, 349, 330].forEach(
+                        (f, i) => tone(f, now + i * 0.13, 0.18, 'sawtooth', 0.18)
+                    );
+                    break;
+            }
+        },
+        toggleMute() {
+            muted = !muted;
+            ensureCtx();
+            masterGain.gain.setTargetAtTime(muted ? 0 : 1, actx.currentTime, 0.1);
+            return muted;
+        },
+        get muted() { return muted; },
+    };
+})();
+
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('board');
 const ctx         = canvas.getContext('2d');
 const nextCanvas  = document.getElementById('next');
 const nextCtx     = nextCanvas.getContext('2d');
+const holdCanvas  = document.getElementById('hold');
+const holdCtx     = holdCanvas.getContext('2d');
 const overlay     = document.getElementById('overlay');
 const overlayMsg  = document.getElementById('overlay-msg');
 const scoreEl     = document.getElementById('score');
@@ -75,13 +218,26 @@ const levelEl     = document.getElementById('level');
 const linesEl     = document.getElementById('lines');
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let board, currentPiece, nextType;
+let board, currentPiece, nextType, holdType, holdUsed;
 let score, highScore, level, linesCleared;
 let gameState;   // 'idle' | 'playing' | 'paused' | 'over'
 let dropTimer, lastTime, animId;
+let lockPending, lockTimer, lockMoves;
+const LOCK_DELAY     = 500;
+const MAX_LOCK_MOVES = 15;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const randomType = () => PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
+let bag = [];
+function randomType() {
+    if (bag.length === 0) {
+        bag = [...PIECE_TYPES];
+        for (let i = bag.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [bag[i], bag[j]] = [bag[j], bag[i]];
+        }
+    }
+    return bag.pop();
+}
 
 function cells(piece) {
     return PIECES[piece.type][piece.rotation].map(([r, c]) => [
@@ -108,6 +264,12 @@ function initGame() {
     linesCleared = 0;
     dropTimer    = 0;
     lastTime     = null;
+    bag          = [];
+    holdType     = null;
+    holdUsed     = false;
+    lockPending  = false;
+    lockTimer    = 0;
+    lockMoves    = 0;
     highScore    = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
     nextType     = randomType();
     spawnPiece();
@@ -115,6 +277,9 @@ function initGame() {
 }
 
 function spawnPiece() {
+    lockPending  = false;
+    lockTimer    = 0;
+    lockMoves    = 0;
     currentPiece = { type: nextType, rotation: 0, row: 0, col: 3 };
     nextType     = randomType();
     if (!isValid(currentPiece)) gameOver();
@@ -123,22 +288,42 @@ function spawnPiece() {
 // ─── Movement ─────────────────────────────────────────────────────────────────
 function moveLeft() {
     const p = { ...currentPiece, col: currentPiece.col - 1 };
-    if (isValid(p)) currentPiece = p;
+    if (isValid(p)) {
+        currentPiece = p;
+        AudioManager.sfx('move');
+        if (lockPending) handleLockReset();
+    }
 }
 
 function moveRight() {
     const p = { ...currentPiece, col: currentPiece.col + 1 };
-    if (isValid(p)) currentPiece = p;
+    if (isValid(p)) {
+        currentPiece = p;
+        AudioManager.sfx('move');
+        if (lockPending) handleLockReset();
+    }
+}
+
+function tryMoveDown() {
+    const p = { ...currentPiece, row: currentPiece.row + 1 };
+    if (isValid(p)) { currentPiece = p; return true; }
+    return false;
 }
 
 function moveDown() {
-    const p = { ...currentPiece, row: currentPiece.row + 1 };
-    if (isValid(p)) { currentPiece = p; return true; }
-    lockPiece();
+    if (tryMoveDown()) { dropTimer = 0; return true; }
+    if (!lockPending) {
+        lockPending = true;
+        lockTimer   = LOCK_DELAY;
+        lockMoves   = 0;
+    }
     return false;
 }
 
 function hardDrop() {
+    lockPending = false;
+    lockTimer   = 0;
+    lockMoves   = 0;
     while (isValid({ ...currentPiece, row: currentPiece.row + 1 })) {
         currentPiece = { ...currentPiece, row: currentPiece.row + 1 };
     }
@@ -151,19 +336,58 @@ function rotate() {
     // Try plain rotation then wall-kicks: ±1, ±2 columns
     for (const kick of [0, -1, 1, -2, 2]) {
         const p = { ...currentPiece, rotation: nextRot, col: currentPiece.col + kick };
-        if (isValid(p)) { currentPiece = p; return; }
+        if (isValid(p)) {
+            currentPiece = p;
+            AudioManager.sfx('rotate');
+            if (lockPending) handleLockReset();
+            return;
+        }
+    }
+}
+
+function holdPiece() {
+    if (holdUsed) return;
+    holdUsed    = true;
+    lockPending = false;
+    lockTimer   = 0;
+    lockMoves   = 0;
+    if (holdType === null) {
+        holdType = currentPiece.type;
+        spawnPiece();
+    } else {
+        const temp   = holdType;
+        holdType     = currentPiece.type;
+        currentPiece = { type: temp, rotation: 0, row: 0, col: 3 };
+        if (!isValid(currentPiece)) { gameOver(); return; }
+    }
+    AudioManager.sfx('rotate');
+}
+
+function handleLockReset() {
+    if (isValid({ ...currentPiece, row: currentPiece.row + 1 })) {
+        lockPending = false;
+        lockTimer   = 0;
+    } else if (lockMoves < MAX_LOCK_MOVES) {
+        lockMoves++;
+        lockTimer = LOCK_DELAY;
     }
 }
 
 // ─── Locking & Line Clearing ──────────────────────────────────────────────────
 function lockPiece() {
+    holdUsed = false;
     cells(currentPiece).forEach(([r, c]) => { board[r][c] = COLORS[currentPiece.type]; });
     const cleared = clearLines();
     if (cleared > 0) {
         score        += SCORE_TABLE[cleared] * level;
         linesCleared += cleared;
-        level         = Math.floor(linesCleared / 10) + 1;
+        const newLevel = Math.floor(linesCleared / 10) + 1;
+        if (newLevel > level) AudioManager.sfx('levelup');
+        level = newLevel;
+        AudioManager.sfx('clear', cleared);
         updateUI();
+    } else {
+        AudioManager.sfx('land');
     }
     spawnPiece();
 }
@@ -251,6 +475,28 @@ function draw() {
         nextCtx.fillRect(x, y, s, 3);
         nextCtx.fillRect(x, y, 3, s);
     });
+
+    // Hold piece preview (dimmed while holdUsed)
+    holdCtx.fillStyle = '#16213e';
+    holdCtx.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
+    if (holdType) {
+        const hCells = PIECES[holdType][0];
+        const hRs = hCells.map(([r]) => r), hCs = hCells.map(([, c]) => c);
+        const hH = Math.max(...hRs) - Math.min(...hRs) + 1;
+        const hW = Math.max(...hCs) - Math.min(...hCs) + 1;
+        const hOR = Math.floor((4 - hH) / 2) - Math.min(...hRs);
+        const hOC = Math.floor((4 - hW) / 2) - Math.min(...hCs);
+        holdCtx.globalAlpha = holdUsed ? 0.3 : 1;
+        hCells.forEach(([r, c]) => {
+            const x = (c + hOC) * CELL + 1, y = (r + hOR) * CELL + 1, s = CELL - 2;
+            holdCtx.fillStyle = COLORS[holdType];
+            holdCtx.fillRect(x, y, s, s);
+            holdCtx.fillStyle = 'rgba(255,255,255,0.25)';
+            holdCtx.fillRect(x, y, s, 3);
+            holdCtx.fillRect(x, y, 3, s);
+        });
+        holdCtx.globalAlpha = 1;
+    }
 }
 
 // ─── UI ───────────────────────────────────────────────────────────────────────
@@ -268,17 +514,20 @@ function startGame() {
     overlay.style.display = 'none';
     lastTime         = null;
     animId           = requestAnimationFrame(loop);
+    AudioManager.startMusic();
 }
 
 function pauseGame() {
     if (gameState === 'playing') {
         gameState = 'paused';
         cancelAnimationFrame(animId);
+        AudioManager.pauseMusic();
         overlayMsg.textContent = 'PAUSED\nPress P to Resume';
         overlay.style.display  = 'flex';
     } else if (gameState === 'paused') {
         gameState = 'playing';
         overlay.style.display = 'none';
+        AudioManager.resumeMusic();
         lastTime = null;
         animId   = requestAnimationFrame(loop);
     }
@@ -287,6 +536,8 @@ function pauseGame() {
 function gameOver() {
     gameState = 'over';
     cancelAnimationFrame(animId);
+    AudioManager.stopMusic();
+    AudioManager.sfx('gameover');
     if (score > highScore) {
         highScore = score;
         localStorage.setItem('tetrisHighScore', highScore);
@@ -303,11 +554,25 @@ function loop(timestamp) {
     if (gameState !== 'playing') return;
     const delta = lastTime ? timestamp - lastTime : 0;
     lastTime    = timestamp;
-    dropTimer  += delta;
-    if (dropTimer >= dropSpeed()) {
-        moveDown();
-        dropTimer = 0;
+
+    if (lockPending) {
+        lockTimer -= delta;
+        if (lockTimer <= 0) {
+            lockPending = false;
+            lockPiece();
+        }
+    } else {
+        dropTimer += delta;
+        if (dropTimer >= dropSpeed()) {
+            if (!tryMoveDown()) {
+                lockPending = true;
+                lockTimer   = LOCK_DELAY;
+                lockMoves   = 0;
+            }
+            dropTimer = 0;
+        }
     }
+
     if (gameState === 'playing') {
         draw();
         animId = requestAnimationFrame(loop);
@@ -315,6 +580,11 @@ function loop(timestamp) {
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
+function updateMuteBtn() {
+    const btn = document.getElementById('mute-btn');
+    if (btn) btn.textContent = AudioManager.muted ? 'SOUND: OFF' : 'SOUND: ON';
+}
+
 document.addEventListener('keydown', e => {
     if (e.code === 'Space') {
         e.preventDefault();
@@ -326,24 +596,33 @@ document.addEventListener('keydown', e => {
         if (gameState === 'playing' || gameState === 'paused') pauseGame();
         return;
     }
+    if (e.code === 'KeyM') {
+        AudioManager.toggleMute();
+        updateMuteBtn();
+        return;
+    }
     if (gameState !== 'playing') return;
     switch (e.code) {
-        case 'ArrowLeft':  e.preventDefault(); moveLeft();                          break;
-        case 'ArrowRight': e.preventDefault(); moveRight();                         break;
-        case 'ArrowDown':  e.preventDefault(); if (moveDown()) dropTimer = 0;       break;
-        case 'ArrowUp':    e.preventDefault(); rotate();                            break;
-        case 'KeyZ':       e.preventDefault(); rotate();                            break;
+        case 'ArrowLeft':  e.preventDefault(); moveLeft();   break;
+        case 'ArrowRight': e.preventDefault(); moveRight();  break;
+        case 'ArrowDown':  e.preventDefault(); moveDown();   break;
+        case 'ArrowUp':    e.preventDefault(); rotate();     break;
+        case 'KeyZ':       e.preventDefault(); rotate();     break;
+        case 'KeyC':
+        case 'ShiftLeft':
+        case 'ShiftRight': e.preventDefault(); holdPiece();  break;
     }
 });
 
 // ─── Touch / Swipe ────────────────────────────────────────────────────────────
-let touchX0, touchY0;
-let lastTapTime = 0;
+// Gestures: tap=rotate, long-press=hold, swipe-up=hard-drop, swipe-down=soft-drop, swipe-left/right=move
+let touchX0, touchY0, touchStartTime;
 
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
-    touchX0 = e.touches[0].clientX;
-    touchY0 = e.touches[0].clientY;
+    touchX0        = e.touches[0].clientX;
+    touchY0        = e.touches[0].clientY;
+    touchStartTime = Date.now();
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
@@ -352,27 +631,20 @@ canvas.addEventListener('touchend', e => {
     if (gameState === 'paused') { pauseGame(); return; }
     if (gameState !== 'playing') return;
 
-    const dx  = e.changedTouches[0].clientX - touchX0;
-    const dy  = e.changedTouches[0].clientY - touchY0;
-    const adx = Math.abs(dx), ady = Math.abs(dy);
+    const dx       = e.changedTouches[0].clientX - touchX0;
+    const dy       = e.changedTouches[0].clientY - touchY0;
+    const adx      = Math.abs(dx), ady = Math.abs(dy);
+    const elapsed  = Date.now() - touchStartTime;
 
     if (adx < 20 && ady < 20) {
-        // Tap: single → rotate CW; double (within 300 ms) → hard drop
-        const now = Date.now();
-        if (now - lastTapTime < 300) {
-            hardDrop();
-            lastTapTime = 0;
-        } else {
-            rotate();
-            lastTapTime = now;
-        }
+        if (elapsed > 250) holdPiece();  // long press → hold
+        else               rotate();    // quick tap → rotate
     } else if (adx > ady) {
-        // Horizontal swipe → exactly one cell per gesture
         if (dx < 0) moveLeft(); else moveRight();
-    } else if (dy > 0) {
-        // Downward swipe → one soft-drop row
-        moveDown();
-        dropTimer = 0;
+    } else if (dy < 0) {
+        hardDrop();   // swipe up → hard drop
+    } else {
+        moveDown();   // swipe down → soft drop
     }
 
     draw();
@@ -425,6 +697,11 @@ function scaleToFit() {
 window.addEventListener('load', scaleToFit);
 window.addEventListener('resize', scaleToFit);
 window.addEventListener('orientationchange', () => setTimeout(scaleToFit, 400));
+
+document.getElementById('mute-btn').addEventListener('click', () => {
+    AudioManager.toggleMute();
+    updateMuteBtn();
+});
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
