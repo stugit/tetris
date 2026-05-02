@@ -46,7 +46,11 @@ const MELODY_C = [
 
 const ALL_MELODIES = [MELODY_A, MELODY_B, MELODY_C];
 let currentMelody = null; // Will hold the active melody array
-let currentMelodyDuration = 0; // Will hold the duration of the active melody
+
+let nextNoteTime = 0;
+let noteIndex = 0;
+const LOOKAHEAD = 0.1; // How far to schedule (seconds)
+const SCHEDULE_INTERVAL = 25; // How often to check (ms)
 
 let actx = null, masterGain = null, musicGain = null, sfxGain = null;
 let melodyTimer = null, musicActive = false, musicMuted = false, sfxMuted = false;
@@ -70,30 +74,46 @@ function ensureCtx() {
     if (actx.state === 'suspended') actx.resume();
 }
 
-function scheduleLoop(loopStart) {
-    let t = loopStart;
-    for (const [note, eighths] of currentMelody) {
-        const dur = eighths * E8;
-        if (note && FREQ[note]) {
-            const osc = actx.createOscillator();
-            const env = actx.createGain();
-            osc.type = 'square';
-            osc.frequency.value = FREQ[note];
-            osc.connect(env);
-            env.connect(musicGain);
-            env.gain.setValueAtTime(0, t);
-            env.gain.linearRampToValueAtTime(1, t + 0.01);
-            env.gain.setValueAtTime(1, t + dur * 0.75);
-            env.gain.linearRampToValueAtTime(0, t + dur * 0.92);
-            osc.start(t);
-            osc.stop(t + dur);
-        }
-        t += dur;
+function scheduler() {
+    if (!musicActive) return;
+
+    // If we've fallen behind (e.g. tab backgrounded), sync to current time
+    if (nextNoteTime < actx.currentTime) {
+        nextNoteTime = actx.currentTime + 0.05;
     }
-    melodyTimer = setTimeout(
-        () => { if (musicActive) scheduleLoop(loopStart + currentMelodyDuration); },
-        (currentMelodyDuration - 0.2) * 1000
-    );
+
+    // Schedule notes that fall within the lookahead window
+    while (nextNoteTime < actx.currentTime + LOOKAHEAD) {
+        scheduleNote(currentMelody[noteIndex], nextNoteTime);
+        advanceNote();
+    }
+    melodyTimer = setTimeout(scheduler, SCHEDULE_INTERVAL);
+}
+
+function scheduleNote(noteData, time) {
+    const [note, eighths] = noteData;
+    const dur = eighths * E8;
+
+    if (note && FREQ[note]) {
+        const osc = actx.createOscillator();
+        const env = actx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = FREQ[note];
+        osc.connect(env);
+        env.connect(musicGain);
+        env.gain.setValueAtTime(0, time);
+        env.gain.linearRampToValueAtTime(1, time + 0.01);
+        env.gain.setValueAtTime(1, time + dur * 0.75);
+        env.gain.linearRampToValueAtTime(0, time + dur * 0.92);
+        osc.start(time);
+        osc.stop(time + dur);
+    }
+}
+
+function advanceNote() {
+    const eighths = currentMelody[noteIndex][1];
+    nextNoteTime += eighths * E8;
+    noteIndex = (noteIndex + 1) % currentMelody.length;
 }
 
 function tone(freq, start, dur, wave = 'sine', vol = 0.15) {
@@ -118,9 +138,10 @@ export const AudioManager = {
         // Randomly select a melody
         const randomIndex = Math.floor(Math.random() * ALL_MELODIES.length);
         currentMelody = ALL_MELODIES[randomIndex];
-        currentMelodyDuration = currentMelody.reduce((s, [, e]) => s + e * E8, 0);
+        noteIndex = 0;
+        nextNoteTime = actx.currentTime + 0.05;
         if (!musicMuted) musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.3);
-        scheduleLoop(actx.currentTime + 0.05);
+        scheduler();
     },
     pauseMusic() {
         if (!actx) return;
