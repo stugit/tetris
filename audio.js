@@ -48,12 +48,15 @@ const ALL_MELODIES = [MELODY_A, MELODY_B, MELODY_C];
 let currentMelody = null; // Will hold the active melody array
 
 let nextNoteTime = 0;
-let noteIndex = 0;
+let noteIndex = 0; // Current note in the melody
 const LOOKAHEAD = 0.1; // How far to schedule (seconds)
 const SCHEDULE_INTERVAL = 25; // How often to check (ms)
 
-let actx = null, masterGain = null, musicGain = null, sfxGain = null;
-let melodyTimer = null, musicActive = false, musicMuted = false, sfxMuted = false;
+let actx = null, masterGain = null, musicGain = null, sfxGain = null; // AudioContext and GainNodes
+let melodyTimer = null; // setTimeout ID for scheduler
+let musicActive = false; // True if scheduler is running
+let musicShouldPlay = false; // True if game logic wants music to play (not stopped)
+let musicMuted = false, sfxMuted = false; // Mute states
 let musicVol = 0.12, sfxVol = 1.0;
 
 function setup() {
@@ -143,22 +146,31 @@ export const AudioManager = {
         scheduler();
     },
     pauseMusic() {
-        if (!actx || !musicActive) return;
-        musicActive = false;
-        clearTimeout(melodyTimer);
-        musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
+        // Called when game is paused. Stops scheduler, but doesn't change musicShouldPlay.
+        if (musicActive) {
+            musicActive = false;
+            clearTimeout(melodyTimer);
+            // Don't touch musicGain here, it's controlled by musicMuted
+        }
     },
     resumeMusic() {
-        if (!actx || musicMuted || musicActive || !currentMelody) return;
-        musicActive = true;
-        nextNoteTime = actx.currentTime + 0.05;
-        musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.1);
-        scheduler();
+        // Called when game is unpaused. Restarts scheduler if musicShouldPlay and not muted.
+        if (!actx || musicActive || !musicShouldPlay || musicMuted || !currentMelody) return;
+        this.startMusicInternal(); // Use internal helper to start scheduler and set gain
     },
     stopMusic() {
+        // Called when game is over. Stops scheduler and indicates music should not play.
         musicActive = false;
+        musicShouldPlay = false;
         clearTimeout(melodyTimer);
         if (actx) musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.15);
+    },
+    // Internal helper to start scheduler and set gain, used by startMusic and resumeMusic
+    startMusicInternal() {
+        musicActive = true;
+        nextNoteTime = actx.currentTime + 0.05;
+        if (!musicMuted) musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.1);
+        scheduler();
     },
     sfx(type, count = 1) {
         ensureCtx();
@@ -187,8 +199,13 @@ export const AudioManager = {
     setMusicMuted(val) {
         musicMuted = val;
         if (!actx) return;
-        if (musicMuted) this.pauseMusic();
-        else if (musicActive) this.resumeMusic();
+        if (musicMuted) {
+            musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
+        } else {
+            // If unmuted, and music was logically supposed to be playing, resume it.
+            if (musicShouldPlay && !musicActive) this.startMusicInternal();
+            else if (musicShouldPlay && musicActive) musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.1);
+        }
     },
     setMusicVolume(val) {
         musicVol = val * 0.3; // Scale range [0, 1] to [0, 0.3] for comfortable background level
