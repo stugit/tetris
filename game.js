@@ -696,8 +696,8 @@ overlay.addEventListener('click', () => {
 });
 
 // ─── Fit to viewport ──────────────────────────────────────────────────────────
-// Scales the entire #wrapper down (CSS transform) so the game fits on screen
-// without scrolling on any phone. Does not affect canvas resolution.
+// Scales the entire #wrapper (CSS transform) so the game fills the screen.
+// Shrinks on mobile to avoid scrolling; scales up on desktop to fill space.
 function scaleToFit() {
     const wrapper = document.getElementById('wrapper');
     wrapper.style.transform = 'none';
@@ -708,11 +708,13 @@ function scaleToFit() {
     const vw    = window.innerWidth;
     const vh    = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     const bs    = getComputedStyle(document.body);
-    const availW = vw - parseFloat(bs.paddingLeft)  - parseFloat(bs.paddingRight);
-    const availH = vh - parseFloat(bs.paddingTop)   - parseFloat(bs.paddingBottom) - 10;
-    const scale  = Math.min(availW / wrapper.offsetWidth, availH / wrapper.offsetHeight, 1);
+    const availW  = vw - parseFloat(bs.paddingLeft)  - parseFloat(bs.paddingRight);
+    const availH  = vh - parseFloat(bs.paddingTop)   - parseFloat(bs.paddingBottom) - 10;
+    const isMobile = vw <= 560 || window.matchMedia('(pointer: coarse)').matches;
+    const maxScale = isMobile ? 1 : 2.0;
+    const scale    = Math.min(availW / wrapper.offsetWidth, availH / wrapper.offsetHeight, maxScale);
 
-    if (scale < 1) {
+    if (Math.abs(scale - 1) > 0.01) {
         wrapper.style.transform       = `scale(${scale})`;
         wrapper.style.transformOrigin = 'top center';
         document.body.style.height    = vh + 'px';
