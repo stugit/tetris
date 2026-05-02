@@ -64,6 +64,7 @@ export const SPEED_STEP   = 50;
 
 export const STORAGE_KEY = 'tetrisHighScore';
 export const PERFECT_CLEAR_BONUS = 3000;
+export const SAVE_KEY = 'tetrisSaveState';
 
 export const DEFAULT_DAS = 150; // ms - Delayed Auto-Shift
 export const DEFAULT_ARR = 30;  // ms - Auto-Repeat Rate
@@ -71,6 +72,7 @@ export const DEFAULT_SDR = 20;  // multiplier for soft drop speed
 export const STORAGE_KEY_DAS = 'tetrisDAS';
 export const STORAGE_KEY_ARR = 'tetrisARR';
 export const STORAGE_KEY_SDR = 'tetrisSDR';
+export const STORAGE_KEY_ZEN = 'tetrisZenMode';
 
 export const SRS_KICKS = {
     '0-1': [[0, 0], [-1, 0], [-1, -1], [ 0,  2], [-1,  2]],
@@ -93,3 +95,12 @@ export const SRS_KICKS_I = {
     '3-0': [[0, 0], [ 1, 0], [-2, 0], [ 1,  2], [-2, -1]],
     '0-3': [[0, 0], [-1, 0], [ 2, 0], [-1, -2], [ 2,  1]]
 };
+
+export const LEVEL_THEMES = [
+    { bg: '#1a1a2e', accent: '#3b3b5c', grid: 'rgba(255, 255, 255, 0.04)' }, // Purple/Default
+    { bg: '#1c0b0b', accent: '#5c3b3b', grid: 'rgba(255, 100, 100, 0.06)' }, // Deep Red
+    { bg: '#0b1c0b', accent: '#3b5c3b', grid: 'rgba(100, 255, 100, 0.06)' }, // Forest Green
+    { bg: '#0b1c1c', accent: '#3b5c5c', grid: 'rgba(100, 255, 255, 0.06)' }, // Teal
+    { bg: '#1c1c0b', accent: '#5c5c3b', grid: 'rgba(255, 255, 100, 0.06)' }, // Amber
+    { bg: '#110b1c', accent: '#443b5c', grid: 'rgba(200, 100, 255, 0.06)' }  // Indigo
+];

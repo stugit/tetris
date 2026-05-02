@@ -1,8 +1,8 @@
 'use strict';
 
-import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, COMBO_BONUS, B2B_MULTIPLIER } from './constants.js';
+import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY } from './constants.js';
 import { AudioManager } from './audio.js';
-import { drawBoard, drawPreview, drawNextQueue, updateUIElements, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, updateParticles, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
+import { drawBoard, drawPreview, drawNextQueue, updateUIElements, updateMetrics, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, updateParticles, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
 
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('board');
@@ -27,7 +27,8 @@ const UI_ELEMENTS = {
     arrSlider:  document.getElementById('arr-slider'),
     sdrSlider:  document.getElementById('sdr-slider'),
     pps:        document.getElementById('pps'),
-    kpp:        document.getElementById('kpp')
+    kpp:        document.getElementById('kpp'),
+    zenCheck:   document.getElementById('zen-check')
 };
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ let piecesSpawnedCount, keyStrokesCount, gameElapsedTime;
 
 // Configurable gameplay settings
 let lastKickIndex = 0;
-let das, arr, sdr;
+let das, arr, sdr, zenMode;
 let activeKeys = {}; // Tracks state of directional keys for DAS/ARR
 
 let lastMoveWasRotate = false;
@@ -80,7 +81,7 @@ function isValid(piece) {
 }
 
 function dropSpeed() {
-    const baseDrop = Math.max(MIN_SPEED, BASE_SPEED - (level - 1) * SPEED_STEP);
+    const baseDrop = zenMode ? BASE_SPEED : Math.max(MIN_SPEED, BASE_SPEED - (level - 1) * SPEED_STEP);
     return activeKeys.softDrop ? baseDrop / sdr : baseDrop;
 }
 
@@ -119,6 +120,46 @@ function initGame() {
     nextQueue    = [randomType(), randomType(), randomType()];
     spawnPiece();
     updateUI();
+}
+
+function saveGame() {
+    if (gameState !== 'playing' && gameState !== 'paused') return;
+    const state = {
+        board, currentPiece, nextQueue, holdType, holdUsed,
+        score, level, linesCleared, comboCount, b2bActive, zenMode,
+        piecesSpawnedCount, keyStrokesCount, gameElapsedTime, bag
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+}
+
+function loadGame(state) {
+    board = state.board;
+    currentPiece = state.currentPiece;
+    nextQueue = state.nextQueue;
+    holdType = state.holdType;
+    holdUsed = state.holdUsed;
+    score = state.score;
+    level = state.level;
+    linesCleared = state.linesCleared;
+    comboCount = state.comboCount;
+    b2bActive = state.b2bActive;
+    piecesSpawnedCount = state.piecesSpawnedCount;
+    zenMode = state.zenMode;
+    keyStrokesCount = state.keyStrokesCount;
+    gameElapsedTime = state.gameElapsedTime;
+    bag = state.bag || [];
+
+    // Reset transient timers
+    dropTimer = 0;
+    lockPending = false;
+    lockTimer = 0;
+    lockMoves = 0;
+    levelUpTimer = 0;
+    perfectClearTimer = 0;
+    tSpinTimer = 0;
+    comboTimer = 0;
+    b2bTimer = 0;
+    clearParticles();
 }
 
 function spawnPiece() {
@@ -322,7 +363,7 @@ function lockPiece() {
         }
         score        += points * level;
         linesCleared += cleared;
-        const newLevel = Math.floor(linesCleared / 10) + 1;
+        const newLevel = zenMode ? 1 : Math.floor(linesCleared / 10) + 1;
         if (newLevel > level) {
             AudioManager.sfx('levelup');
             levelUpTimer = 1500;
@@ -335,6 +376,7 @@ function lockPiece() {
         AudioManager.sfx('land');
     }
     spawnPiece();
+    saveGame();
 }
 
 function clearLines() {
@@ -359,7 +401,7 @@ function ghostPiece() {
 }
 
 function draw() {
-    drawBoard(ctx, board, currentPiece, cells(ghostPiece()));
+    drawBoard(ctx, board, currentPiece, cells(ghostPiece()), level, zenMode);
     drawNextQueue(nextCtx, nextCanvas, nextQueue);
     drawPreview(holdCtx, holdCanvas, holdType, holdUsed);
     if (levelUpTimer > 0) drawLevelUp(ctx, levelUpTimer);
@@ -377,16 +419,32 @@ function updateUI() {
         highScore, 
         level, 
         linesCleared, 
-        pps: gameElapsedTime > 0 ? (piecesSpawnedCount / (gameElapsedTime / 1000)).toFixed(2) : '0.00',
-        kpp: piecesSpawnedCount > 0 ? (keyStrokesCount / piecesSpawnedCount).toFixed(2) : '0.00',
         musicMuted: AudioManager.musicMuted, 
         sfxMuted: AudioManager.sfxMuted 
     });
+    updateFrequentUI();
+}
+
+function updateFrequentUI() {
+    const pps = gameElapsedTime > 0 ? (piecesSpawnedCount / (gameElapsedTime / 1000)).toFixed(2) : '0.00';
+    const kpp = piecesSpawnedCount > 0 ? (keyStrokesCount / piecesSpawnedCount).toFixed(2) : '0.00';
+    updateMetrics(UI_ELEMENTS, { pps, kpp });
 }
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 function startGame() {
-    initGame();
+    const saved = localStorage.getItem(SAVE_KEY);
+    if (saved && gameState === 'idle') {
+        try {
+            loadGame(JSON.parse(saved));
+            updateUI();
+        } catch (e) {
+            console.error("Failed to load save", e);
+            initGame();
+        }
+    } else {
+        initGame();
+    }
     gameState        = 'playing';
     overlay.style.display = 'none';
     lastTime         = null;
@@ -415,6 +473,7 @@ function gameOver() {
     cancelAnimationFrame(animId);
     AudioManager.stopMusic();
     AudioManager.sfx('gameover');
+    localStorage.removeItem(SAVE_KEY);
     if (score > highScore) {
         highScore = score;
         localStorage.setItem(STORAGE_KEY, highScore);
@@ -477,7 +536,7 @@ function loop(timestamp) {
     }
 
     if (gameState === 'playing') {
-        updateUI();
+        updateFrequentUI();
         draw();
         animId = requestAnimationFrame(loop);
     }
@@ -675,6 +734,11 @@ UI_ELEMENTS.sdrSlider.addEventListener('input', e => {
     localStorage.setItem(STORAGE_KEY_SDR, sdr);
 });
 
+UI_ELEMENTS.zenCheck.addEventListener('change', e => {
+    zenMode = e.target.checked;
+    localStorage.setItem(STORAGE_KEY_ZEN, zenMode);
+});
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
 score                   = 0;
@@ -690,6 +754,7 @@ b2bTimer                = 0;
 das                     = parseInt(localStorage.getItem(STORAGE_KEY_DAS) || DEFAULT_DAS, 10);
 arr                     = parseInt(localStorage.getItem(STORAGE_KEY_ARR) || DEFAULT_ARR, 10);
 sdr                     = parseInt(localStorage.getItem(STORAGE_KEY_SDR) || DEFAULT_SDR, 10);
+zenMode                 = localStorage.getItem(STORAGE_KEY_ZEN) === 'true';
 highScore               = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
 
 const savedMusicVol = localStorage.getItem('tetrisMusicVol');
@@ -707,6 +772,12 @@ if (savedSfxVol !== null) {
 UI_ELEMENTS.dasSlider.value = das;
 UI_ELEMENTS.arrSlider.value = arr;
 UI_ELEMENTS.sdrSlider.value = sdr;
+UI_ELEMENTS.zenCheck.checked = zenMode;
+
+const savedState = localStorage.getItem(SAVE_KEY);
+if (savedState) {
+    overlayMsg.textContent = 'RESTORED\nPress Space to Resume';
+}
 
 updateUI();
 ctx.fillStyle           = '#1a1a2e';

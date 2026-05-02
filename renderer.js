@@ -1,4 +1,4 @@
-import { CELL, PIECES, COLORS, ROWS, COLS } from './constants.js';
+import { CELL, PIECES, COLORS, ROWS, COLS, LEVEL_THEMES } from './constants.js';
 
 export function drawCell(context, r, c, color, alpha = 1) {
     const x = c * CELL + 1, y = r * CELL + 1, s = CELL - 2;
@@ -70,15 +70,18 @@ export function drawNextQueue(context, canvasObj, queue) {
 let shakeTimer = 0;
 let shakeIntensity = 0;
 
-export function drawBoard(ctx, board, currentPiece, ghostCells) {
+export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false) {
+    const theme = LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
+
     ctx.save();
     if (shakeTimer > 0) {
         ctx.translate((Math.random() - 0.5) * shakeIntensity, (Math.random() - 0.5) * shakeIntensity);
     }
-    ctx.fillStyle = '#1a1a2e';
+    
+    ctx.fillStyle = theme.bg;
     ctx.fillRect(-20, -20, ctx.canvas.width + 40, ctx.canvas.height + 40);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.strokeStyle = theme.grid;
     ctx.lineWidth = 1;
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
@@ -101,6 +104,24 @@ export function drawBoard(ctx, board, currentPiece, ghostCells) {
             drawCell(ctx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
         });
     }
+
+    if (zenMode) {
+        ctx.font = 'bold 12px "Courier New"';
+        ctx.fillStyle = '#c084fc';
+        ctx.textAlign = 'right';
+        ctx.fillText('ZEN', ctx.canvas.width - 8, 18);
+    }
+
+    // Draw internal level-based border
+    ctx.strokeStyle = zenMode ? '#c084fc' : theme.accent;
+    ctx.lineWidth = 4;
+    if (zenMode) {
+        // Add a glow effect to the border in Zen Mode
+        ctx.shadowColor = '#a855f7';
+        ctx.shadowBlur = 10;
+    }
+    ctx.strokeRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
     ctx.restore();
 }
 
@@ -268,14 +289,16 @@ export function clearParticles() {
     shakeTimer = 0;
 }
 
+export function updateMetrics(elements, state) {
+    if (elements.pps) elements.pps.textContent = state.pps;
+    if (elements.kpp) elements.kpp.textContent = state.kpp;
+}
+
 export function updateUIElements(elements, state) {
     elements.score.textContent = state.score;
     elements.highScore.textContent = state.highScore;
     elements.level.textContent = state.level;
     elements.lines.textContent = state.linesCleared;
-
-    if (elements.pps) elements.pps.textContent = state.pps;
-    if (elements.kpp) elements.kpp.textContent = state.kpp;
 
     if (elements.musicCheck) elements.musicCheck.checked = !state.musicMuted;
     if (elements.sfxCheck) elements.sfxCheck.checked = !state.sfxMuted;
