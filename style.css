@@ -130,6 +130,17 @@ h1 {
     padding: 8px 12px;
 }
 
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+input[type="range"] {
+    width: 100%;
+    accent-color: #c084fc;
+}
+
 .setting-item {
     display: flex;
     align-items: center;

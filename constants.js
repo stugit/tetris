@@ -57,3 +57,6 @@ export const SCORE_TABLE  = [0, 100, 300, 500, 800];
 export const BASE_SPEED   = 800;
 export const MIN_SPEED    = 100;
 export const SPEED_STEP   = 50;
+
+export const STORAGE_KEY = 'tetrisHighScore';
+export const PERFECT_CLEAR_BONUS = 3000;

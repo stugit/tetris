@@ -67,6 +67,97 @@ export function drawBoard(ctx, board, currentPiece, ghostCells) {
     }
 }
 
+export function drawLevelUp(ctx, timer) {
+    const opacity = Math.min(1, timer / 500); // Fade out in last 500ms
+    ctx.save();
+    ctx.fillStyle = `rgba(192, 132, 252, ${opacity * 0.8})`; // Purple theme (#c084fc)
+    ctx.font = 'bold 30px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Centered text with shadow for readability
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 4;
+    
+    const x = ctx.canvas.width / 2;
+    const y = ctx.canvas.height / 2;
+    
+    // Subtle scale animation
+    const scale = 1 + (1500 - timer) / 3000;
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillText('LEVEL UP!', 0, 0);
+    ctx.restore();
+}
+
+export function drawPerfectClear(ctx, timer) {
+    const opacity = Math.min(1, timer / 500);
+    ctx.save();
+    ctx.fillStyle = `rgba(255, 215, 0, ${opacity})`; // Gold color
+    ctx.font = 'bold 34px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 10;
+    
+    const x = ctx.canvas.width / 2;
+    const y = ctx.canvas.height / 2 - 50; // Positioned slightly above center
+    
+    // Pulsing scale animation
+    const scale = 1 + Math.sin(timer / 150) * 0.1;
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillText('PERFECT CLEAR!', 0, 0);
+    ctx.restore();
+}
+
+let particles = [];
+
+/**
+ * Creates a burst of square particles at a specific location.
+ */
+export function createExplosion(x, y, color, count = 30) {
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 + 2;
+        particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: Math.random() * 5 + 2,
+            color,
+            life: 1.0,
+            decay: Math.random() * 0.02 + 0.015
+        });
+    }
+}
+
+export function updateParticles(delta) {
+    // Normalize decay to frame rate (assuming ~60fps)
+    const step = delta / 16.67;
+    particles = particles.filter(p => {
+        p.x += p.vx * step;
+        p.y += p.vy * step;
+        p.life -= p.decay * step;
+        return p.life > 0;
+    });
+}
+
+export function drawParticles(ctx) {
+    ctx.save();
+    particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    });
+    ctx.restore();
+}
+
+export function clearParticles() {
+    particles = [];
+}
+
 export function updateUIElements(elements, state) {
     elements.score.textContent = state.score;
     elements.highScore.textContent = state.highScore;

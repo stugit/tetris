@@ -1,8 +1,8 @@
 'use strict';
 
-import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS } from './constants.js';
+import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS } from './constants.js';
 import { AudioManager } from './audio.js';
-import { drawBoard, drawPreview, updateUIElements } from './renderer.js';
+import { drawBoard, drawPreview, updateUIElements, drawLevelUp, drawPerfectClear, createExplosion, updateParticles, drawParticles, clearParticles } from './renderer.js';
 
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('board');
@@ -20,7 +20,9 @@ const UI_ELEMENTS = {
     level:     document.getElementById('level'),
     lines:     document.getElementById('lines'),
     musicCheck: document.getElementById('music-check'),
-    sfxCheck:   document.getElementById('sfx-check')
+    sfxCheck:   document.getElementById('sfx-check'),
+    musicVol:   document.getElementById('music-vol'),
+    sfxVol:     document.getElementById('sfx-vol')
 };
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -29,6 +31,8 @@ let score, highScore, level, linesCleared;
 let gameState;   // 'idle' | 'playing' | 'paused' | 'over'
 let dropTimer, lastTime, animId;
 let lockPending, lockTimer, lockMoves;
+let levelUpTimer;
+let perfectClearTimer;
 const LOCK_DELAY     = 500;
 const MAX_LOCK_MOVES = 15;
 
@@ -77,6 +81,9 @@ function initGame() {
     lockPending  = false;
     lockTimer    = 0;
     lockMoves    = 0;
+    levelUpTimer = 0;
+    perfectClearTimer = 0;
+    clearParticles();
     nextType     = randomType();
     spawnPiece();
     updateUI();
@@ -185,10 +192,23 @@ function lockPiece() {
     cells(currentPiece).forEach(([r, c]) => { board[r][c] = COLORS[currentPiece.type]; });
     const cleared = clearLines();
     if (cleared > 0) {
-        score        += SCORE_TABLE[cleared] * level;
+        const isPerfectClear = board.every(row => row.every(cell => cell === null));
+        let points = SCORE_TABLE[cleared];
+        if (isPerfectClear) {
+            points += PERFECT_CLEAR_BONUS;
+            perfectClearTimer = 2000;
+            createExplosion(canvas.width / 2, canvas.height / 2, '#ffd700', 100);
+        }
+        if (cleared === 4) {
+            createExplosion(canvas.width / 2, canvas.height / 2, COLORS.I, 60);
+        }
+        score        += points * level;
         linesCleared += cleared;
         const newLevel = Math.floor(linesCleared / 10) + 1;
-        if (newLevel > level) AudioManager.sfx('levelup');
+        if (newLevel > level) {
+            AudioManager.sfx('levelup');
+            levelUpTimer = 1500;
+        }
         level = newLevel;
         AudioManager.sfx('clear', cleared);
         updateUI();
@@ -223,6 +243,9 @@ function draw() {
     drawBoard(ctx, board, currentPiece, cells(ghostPiece()));
     drawPreview(nextCtx, nextCanvas, nextType);
     drawPreview(holdCtx, holdCanvas, holdType, holdUsed);
+    if (levelUpTimer > 0) drawLevelUp(ctx, levelUpTimer);
+    if (perfectClearTimer > 0) drawPerfectClear(ctx, perfectClearTimer);
+    drawParticles(ctx);
 }
 
 // ─── UI ───────────────────────────────────────────────────────────────────────
@@ -270,7 +293,7 @@ function gameOver() {
     AudioManager.sfx('gameover');
     if (score > highScore) {
         highScore = score;
-        localStorage.setItem('tetrisHighScore', highScore);
+        localStorage.setItem(STORAGE_KEY, highScore);
         overlayMsg.textContent  = `NEW BEST!\n${score} pts\nPress Space to Restart`;
     } else {
         overlayMsg.textContent = `GAME OVER\n${score} pts\nPress Space to Restart`;
@@ -284,6 +307,10 @@ function loop(timestamp) {
     if (gameState !== 'playing') return;
     const delta = lastTime ? timestamp - lastTime : 0;
     lastTime    = timestamp;
+
+    if (levelUpTimer > 0) levelUpTimer -= delta;
+    if (perfectClearTimer > 0) perfectClearTimer -= delta;
+    updateParticles(delta);
 
     if (lockPending) {
         lockTimer -= delta;
@@ -436,12 +463,37 @@ UI_ELEMENTS.sfxCheck.addEventListener('change', e => {
     updateUI();
 });
 
+UI_ELEMENTS.musicVol.addEventListener('input', e => {
+    const val = parseFloat(e.target.value);
+    AudioManager.setMusicVolume(val);
+    localStorage.setItem('tetrisMusicVol', val);
+});
+
+UI_ELEMENTS.sfxVol.addEventListener('input', e => {
+    const val = parseFloat(e.target.value);
+    AudioManager.setSfxVolume(val);
+    localStorage.setItem('tetrisSfxVol', val);
+});
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
 score                   = 0;
 level                   = 1;
 linesCleared            = 0;
-highScore               = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
+levelUpTimer            = 0;
+perfectClearTimer       = 0;
+highScore               = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+
+const savedMusicVol = localStorage.getItem('tetrisMusicVol');
+if (savedMusicVol !== null) {
+    UI_ELEMENTS.musicVol.value = savedMusicVol;
+    AudioManager.setMusicVolume(parseFloat(savedMusicVol));
+}
+const savedSfxVol = localStorage.getItem('tetrisSfxVol');
+if (savedSfxVol !== null) {
+    UI_ELEMENTS.sfxVol.value = savedSfxVol;
+    AudioManager.setSfxVolume(parseFloat(savedSfxVol));
+}
 
 updateUI();
 ctx.fillStyle           = '#1a1a2e';

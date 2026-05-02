@@ -6,7 +6,7 @@ const FREQ = {
     E5:659.25, F5:698.46, G5:783.99, A5:880.00,
 };
 
-const MELODY = [
+const MELODY_A = [
     ['E5',2],['B4',1],['C5',1],['D5',2],['C5',1],['B4',1],
     ['A4',2],['A4',1],['C5',1],['E5',2],['D5',1],['C5',1],
     ['B4',3],['C5',1],['D5',2],['E5',2],
@@ -18,10 +18,39 @@ const MELODY = [
     ['C5',2],['A4',2],['A4',4],
 ];
 
-const MELODY_S = MELODY.reduce((s, [, e]) => s + e * E8, 0);
+// A second melody variation
+const MELODY_B = [
+    ['C5',2],['G4',1],['A4',1],['B4',2],['A4',1],['G4',1],
+    ['F4',2],['F4',1],['A4',1],['C5',2],['B4',1],['A4',1],
+    ['G4',3],['A4',1],['B4',2],['C5',2],
+    ['A4',2],['F4',2],['F4',4],
+    [null,1],['F4',1],['G4',2],['A4',4],
+    ['B4',3],['D5',1],['F5',2],['E5',1],['D5',1],
+    ['C5',3],['A4',1],['C5',2],['B4',1],['A4',1],
+    ['G4',2],['G4',1],['A4',1],['B4',2],['C5',2],
+    ['A4',2],['F4',2],['F4',4],
+];
 
-let actx = null, masterGain = null, musicGain = null;
+// A third melody variation
+const MELODY_C = [
+    ['D5',2],['A4',1],['B4',1],['C5',2],['B4',1],['A4',1],
+    ['G4',2],['G4',1],['B4',1],['D5',2],['C5',1],['B4',1],
+    ['A4',3],['B4',1],['C5',2],['D5',2],
+    ['B4',2],['G4',2],['G4',4],
+    [null,1],['G4',1],['A4',2],['B4',4],
+    ['C5',3],['E5',1],['G5',2],['F5',1],['E5',1],
+    ['D5',3],['B4',1],['D5',2],['C5',1],['B4',1],
+    ['A4',2],['A4',1],['B4',1],['C5',2],['D5',2],
+    ['B4',2],['G4',2],['G4',4],
+];
+
+const ALL_MELODIES = [MELODY_A, MELODY_B, MELODY_C];
+let currentMelody = null; // Will hold the active melody array
+let currentMelodyDuration = 0; // Will hold the duration of the active melody
+
+let actx = null, masterGain = null, musicGain = null, sfxGain = null;
 let melodyTimer = null, musicActive = false, musicMuted = false, sfxMuted = false;
+let musicVol = 0.12, sfxVol = 1.0;
 
 function setup() {
     actx       = new (window.AudioContext || window.webkitAudioContext)();
@@ -31,6 +60,9 @@ function setup() {
     musicGain  = actx.createGain();
     musicGain.gain.value = 0;
     musicGain.connect(masterGain);
+    sfxGain    = actx.createGain();
+    sfxGain.gain.value = sfxVol;
+    sfxGain.connect(masterGain);
 }
 
 function ensureCtx() {
@@ -40,7 +72,7 @@ function ensureCtx() {
 
 function scheduleLoop(loopStart) {
     let t = loopStart;
-    for (const [note, eighths] of MELODY) {
+    for (const [note, eighths] of currentMelody) {
         const dur = eighths * E8;
         if (note && FREQ[note]) {
             const osc = actx.createOscillator();
@@ -59,8 +91,8 @@ function scheduleLoop(loopStart) {
         t += dur;
     }
     melodyTimer = setTimeout(
-        () => { if (musicActive) scheduleLoop(loopStart + MELODY_S); },
-        (MELODY_S - 0.2) * 1000
+        () => { if (musicActive) scheduleLoop(loopStart + currentMelodyDuration); },
+        (currentMelodyDuration - 0.2) * 1000
     );
 }
 
@@ -70,7 +102,7 @@ function tone(freq, start, dur, wave = 'sine', vol = 0.15) {
     osc.type = wave;
     osc.frequency.value = freq;
     osc.connect(g);
-    g.connect(masterGain);
+    g.connect(sfxGain);
     g.gain.setValueAtTime(vol, start);
     g.gain.exponentialRampToValueAtTime(0.001, start + dur);
     osc.start(start);
@@ -82,7 +114,12 @@ export const AudioManager = {
         ensureCtx();
         if (musicActive) return;
         musicActive = true;
-        if (!musicMuted) musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.3);
+
+        // Randomly select a melody
+        const randomIndex = Math.floor(Math.random() * ALL_MELODIES.length);
+        currentMelody = ALL_MELODIES[randomIndex];
+        currentMelodyDuration = currentMelody.reduce((s, [, e]) => s + e * E8, 0);
+        if (!musicMuted) musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.3);
         scheduleLoop(actx.currentTime + 0.05);
     },
     pauseMusic() {
@@ -91,7 +128,7 @@ export const AudioManager = {
     },
     resumeMusic() {
         if (!actx || musicMuted) return;
-        musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.2);
+        musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.2);
     },
     stopMusic() {
         musicActive = false;
@@ -126,6 +163,16 @@ export const AudioManager = {
         if (!actx) return;
         if (musicMuted) this.pauseMusic();
         else if (musicActive) this.resumeMusic();
+    },
+    setMusicVolume(val) {
+        musicVol = val * 0.3; // Scale range [0, 1] to [0, 0.3] for comfortable background level
+        if (actx && musicActive && !musicMuted) {
+            musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.1);
+        }
+    },
+    setSfxVolume(val) {
+        sfxVol = val;
+        if (sfxGain) sfxGain.gain.setTargetAtTime(sfxVol, actx.currentTime, 0.1);
     },
     setSfxMuted(val) {
         sfxMuted = val;
