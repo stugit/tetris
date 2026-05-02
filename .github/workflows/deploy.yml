@@ -17,6 +17,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -30,7 +32,7 @@ jobs:
 
       # Push any auto-fixes back to main. [skip ci] prevents an extra loop run.
       - name: Commit auto-fixes
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -40,6 +42,15 @@ jobs:
             git pull --rebase origin main &&
             git push
           )
+
+      - name: Generate Changelog
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: TriPSs/conventional-changelog-action@v5
+        with:
+          github-token: ${{ github.token }}
+          git-message: 'chore(release): {version} [skip ci]'
+          preset: 'conventionalcommits'
+          skip-on-empty: 'true'
 
       - name: Fail on remaining lint errors
         run: npm run lint
