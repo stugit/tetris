@@ -160,28 +160,66 @@ input[type="range"] {
 
 /* ─── Responsive: stack on mobile / touch screens ──────────────────────── */
 @media (max-width: 560px), (pointer: coarse) {
-    body { padding: 16px 8px; }
+    body { padding: 8px 4px; }
 
-    h1 { font-size: 1.8rem; }
+    #wrapper { gap: 10px; }
+
+    h1 { 
+        font-size: 1.5rem; 
+        letter-spacing: 0.15em;
+        margin-bottom: -5px;
+    }
 
     #game-area {
         flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
     }
 
     #left-panel,
     #panel {
         flex-direction: row;
         flex-wrap: wrap;
-        width: 300px;
-        gap: 8px;
+        width: 100%;
+        max-width: 320px;
+        gap: 4px;
+        justify-content: center;
     }
 
-    .stat, #hold-container, #next-container {
+    .stat {
         flex: 1;
-        min-width: 130px;
+        min-width: 80px;
+        padding: 4px 6px;
+        gap: 0;
     }
+
+    .stat span:last-child {
+        font-size: 1.1rem;
+    }
+
+    #hold-container, #next-container {
+        flex: 0 0 auto;
+        padding: 4px 8px;
+        align-items: center;
+    }
+
+    #hold { width: 50px; height: 50px; }
+    #next { width: 50px; height: 150px; }
+
+    #settings {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        font-size: 0.55rem;
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .setting-group { gap: 2px; }
 
     #controls { display: none; }
+
+    #canvas-container {
+        order: -1; /* Keeps board prioritized at the top if needed, or adjust as preferred */
+    }
 }

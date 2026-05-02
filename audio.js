@@ -121,7 +121,6 @@ function tone(freq, start, dur, wave = 'sine', vol = 0.15) {
     const osc = actx.createOscillator();
     const g   = actx.createGain();
     osc.type = wave;
-    osc.frequency.value = freq;
     osc.frequency.setValueAtTime(freq, start);
     osc.connect(g);
     g.connect(sfxGain);

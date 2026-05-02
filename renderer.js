@@ -77,8 +77,13 @@ const stars = Array.from({ length: STAR_COUNT }, () => ({
     speed: Math.random() * 0.02 + 0.01
 }));
 
-export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false) {
-    const theme = LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
+export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false, showGhost = true, lockPending = false, lockTimer = 0) {
+    const theme = zenMode 
+        ? { bg: '#110b1c', accent: '#c084fc', grid: 'rgba(192, 132, 252, 0.08)' }
+        : LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
+
+    const freq = (2 * Math.PI * BPM) / 60000;
+    const pulse = 0.7 + Math.sin(totalTime * freq) * 0.3;
 
     // Local helper to draw the "physical" game content (grid + pieces)
     const drawGameContent = (targetCtx, offset = 0) => {
@@ -95,12 +100,21 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
         }
 
         if (currentPiece) {
-            ghostCells.forEach(([r, c]) => {
-                drawCell(targetCtx, r, c, COLORS[currentPiece.type], 0.2);
-            });
+            if (showGhost && ghostCells) {
+                ghostCells.forEach(([r, c]) => {
+                    drawCell(targetCtx, r, c, COLORS[currentPiece.type], 0.2);
+                });
+            }
             PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
                 drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
             });
+
+            if (lockPending) {
+                const flashAlpha = Math.sin(lockTimer * 0.03) * 0.3 + 0.3;
+                PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
+                    drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, '#ffffff', flashAlpha);
+                });
+            }
         }
         targetCtx.restore();
     };
@@ -141,7 +155,7 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
     ctx.fillStyle = '#ffffff';
     stars.forEach(s => {
         // parralax effect: faster stars are brighter/closer
-        ctx.globalAlpha = s.speed * 30;
+        ctx.globalAlpha = s.speed * 30 * (zenMode ? pulse : 1);
         ctx.fillRect(s.x, s.y, s.size, s.size);
     });
     ctx.globalAlpha = 1;
@@ -162,19 +176,16 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
     drawGameContent(ctx, 0);
 
     if (zenMode) {
-        const freq = (2 * Math.PI * BPM) / 60000;
-        const pulse = 0.7 + Math.sin(totalTime * freq) * 0.3;
         ctx.font = 'bold 14px "Courier New"';
         ctx.fillStyle = `rgba(192, 132, 252, ${pulse})`;
         ctx.textAlign = 'right';
-        ctx.fillText('ZEN MODE', ctx.canvas.width - 8, 22);
+        ctx.fillText('ZEN MODE', ctx.canvas.width - 8, 24);
     }
 
     // Draw internal level-based border
     ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 4;
     if (zenMode) {
-        const freq = (2 * Math.PI * BPM) / 60000;
         const glowPulse = 8 + Math.sin(totalTime * freq) * 6;
         // Add a glow effect to the border in Zen Mode
         ctx.shadowColor = '#a855f7';

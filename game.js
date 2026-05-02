@@ -677,7 +677,7 @@ function scaleToFit() {
     const vh    = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     const bs    = getComputedStyle(document.body);
     const availW = vw - parseFloat(bs.paddingLeft)  - parseFloat(bs.paddingRight);
-    const availH = vh - parseFloat(bs.paddingTop)   - parseFloat(bs.paddingBottom);
+    const availH = vh - parseFloat(bs.paddingTop)   - parseFloat(bs.paddingBottom) - 10;
     const scale  = Math.min(availW / wrapper.offsetWidth, availH / wrapper.offsetHeight, 1);
 
     if (scale < 1) {
