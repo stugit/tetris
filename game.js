@@ -2,7 +2,7 @@
 
 import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY, LEVEL_THEMES } from './constants.js';
 import { AudioManager } from './audio.js';
-import { drawBoard, drawPreview, drawNextQueue, updateUIElements, updateMetrics, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, updateParticles, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
+import { drawBoard, drawPreview, drawNextQueue, updateUIElements, updateMetrics, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
 
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('board');
@@ -216,7 +216,9 @@ function hardDrop() {
     lockPending = false;
     lockTimer   = 0;
     lockMoves   = 0;
-    while (tryMoveDown()) {} // Move down until collision
+    while (tryMoveDown()) {
+        // Continue moving down until a collision is detected
+    }
     triggerShake(4, 100);    // Subtle shake on impact
     lockPiece();
     dropTimer = 0;

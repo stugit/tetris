@@ -1,0 +1,24 @@
+name: Generate Changelog
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to retrieve all tags and commits
+
+      - name: Conventional Changelog Action
+        uses: TriPSs/conventional-changelog-action@v5
+        with:
+          github-token: ${{ github.token }}
+          git-message: 'chore(release): {version} [skip ci]'
+          preset: 'conventionalcommits'
+          # This will update CHANGELOG.md and bump the version in package.json
+          skip-on-empty: 'true'
