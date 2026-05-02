@@ -37,6 +37,7 @@ jobs:
           git diff --quiet || (
             git add -u &&
             git commit -m "ci: auto-fix lint [skip ci]" &&
+            git pull --rebase origin main &&
             git push
           )
 

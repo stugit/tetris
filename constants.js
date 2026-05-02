@@ -75,6 +75,21 @@ export const STORAGE_KEY_ARR = 'tetrisARR';
 export const STORAGE_KEY_SDR = 'tetrisSDR';
 export const STORAGE_KEY_ZEN = 'tetrisZenMode';
 export const STORAGE_KEY_GHOST = 'tetrisShowGhost';
+export const STORAGE_KEY_KEYS = 'tetrisKeyBindings';
+
+export const DEFAULT_KEYS = {
+    'ArrowLeft':  'left',
+    'ArrowRight': 'right',
+    'ArrowDown':  'softDrop',
+    'ArrowUp':    'rotateCW',
+    'KeyZ':       'rotateCCW',
+    'KeyC':       'hold',
+    'ShiftLeft':  'hold',
+    'ShiftRight': 'hold',
+    'Space':      'hardDrop',
+    'KeyP':       'pause',
+    'KeyM':       'mute',
+};
 
 export const SRS_KICKS = {
     '0-1': [[0, 0], [-1, 0], [-1, -1], [ 0,  2], [-1,  2]],

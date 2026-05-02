@@ -1,6 +1,6 @@
 'use strict';
 
-import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, STORAGE_KEY_GHOST, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY, LEVEL_THEMES } from './constants.js';
+import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, STORAGE_KEY_GHOST, STORAGE_KEY_KEYS, DEFAULT_KEYS, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY, LEVEL_THEMES } from './constants.js';
 import { AudioManager } from './audio.js';
 import { drawBoard, drawPreview, drawNextQueue, updateUIElements, updateMetrics, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
 
@@ -48,6 +48,7 @@ let piecesSpawnedCount, keyStrokesCount, gameElapsedTime;
 // Configurable gameplay settings
 let lastKickIndex = 0;
 let das, arr, sdr, zenMode, showGhost;
+let keyBindings = { ...DEFAULT_KEYS };
 let activeKeys = {}; // Tracks state of directional keys for DAS/ARR
 
 let lastMoveWasRotate = false;
@@ -552,24 +553,10 @@ function loop(timestamp) {
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
-const KEY_MAP = {
-    'ArrowLeft':  'left',
-    'ArrowRight': 'right',
-    'ArrowDown':  'softDrop',
-    'ArrowUp':    'rotateCW',
-    'KeyZ':       'rotateCCW',
-    'KeyC':       'hold',
-    'ShiftLeft':  'hold',
-    'ShiftRight': 'hold',
-    'Space':      'hardDrop',
-    'KeyP':       'pause',
-    'KeyM':       'mute',
-};
-
 document.addEventListener('keydown', e => {
     if (e.repeat) return; // Ignore native key repeat
 
-    const action = KEY_MAP[e.code];
+    const action = keyBindings[e.code];
     if (!action) return;
     e.preventDefault();
 
@@ -612,7 +599,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('keyup', e => {
-    const action = KEY_MAP[e.code];
+    const action = keyBindings[e.code];
     if (!action) return;
     if (action === 'left') delete activeKeys.left;
     else if (action === 'right') delete activeKeys.right;
@@ -771,6 +758,8 @@ sdr                     = parseInt(localStorage.getItem(STORAGE_KEY_SDR) || DEFA
 zenMode                 = localStorage.getItem(STORAGE_KEY_ZEN) === 'true';
 const savedGhost        = localStorage.getItem(STORAGE_KEY_GHOST);
 showGhost               = savedGhost === null ? true : savedGhost === 'true';
+const savedKeys         = localStorage.getItem(STORAGE_KEY_KEYS);
+if (savedKeys) keyBindings = JSON.parse(savedKeys);
 highScore               = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
 
 const savedMusicVol = localStorage.getItem('tetrisMusicVol');
