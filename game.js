@@ -1,6 +1,6 @@
 'use strict';
 
-import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, COMBO_BONUS, B2B_MULTIPLIER } from './constants.js';
+import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, COMBO_BONUS, B2B_MULTIPLIER } from './constants.js';
 import { AudioManager } from './audio.js';
 import { drawBoard, drawPreview, drawNextQueue, updateUIElements, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, updateParticles, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
 
@@ -25,7 +25,9 @@ const UI_ELEMENTS = {
     sfxVol:     document.getElementById('sfx-vol'),
     dasSlider:  document.getElementById('das-slider'),
     arrSlider:  document.getElementById('arr-slider'),
-    sdrSlider:  document.getElementById('sdr-slider')
+    sdrSlider:  document.getElementById('sdr-slider'),
+    pps:        document.getElementById('pps'),
+    kpp:        document.getElementById('kpp')
 };
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -39,8 +41,10 @@ let perfectClearTimer;
 let tSpinTimer, tSpinType;
 let comboCount, b2bActive;
 let comboTimer, b2bTimer;
+let piecesSpawnedCount, keyStrokesCount, gameElapsedTime;
 
 // Configurable gameplay settings
+let lastKickIndex = 0;
 let das, arr, sdr;
 let activeKeys = {}; // Tracks state of directional keys for DAS/ARR
 
@@ -101,6 +105,10 @@ function initGame() {
     b2bActive    = false;
     comboTimer   = 0;
     b2bTimer     = 0;
+    piecesSpawnedCount = 0;
+    lastKickIndex      = 0;
+    keyStrokesCount    = 0;
+    gameElapsedTime    = 0;
     das = parseInt(localStorage.getItem(STORAGE_KEY_DAS) || DEFAULT_DAS, 10);
     arr = parseInt(localStorage.getItem(STORAGE_KEY_ARR) || DEFAULT_ARR, 10);
     sdr = parseInt(localStorage.getItem(STORAGE_KEY_SDR) || DEFAULT_SDR, 10);
@@ -119,6 +127,7 @@ function spawnPiece() {
     lockMoves    = 0;
     lastMoveWasRotate = false;
     const type   = nextQueue.shift();
+    piecesSpawnedCount++;
     currentPiece = { type, rotation: 0, row: 0, col: 3 };
     nextQueue.push(randomType());
     if (!isValid(currentPiece)) gameOver();
@@ -179,10 +188,12 @@ function rotate(dir = 1) {
     const key = `${startRot}-${nextRot}`;
     const kicks = currentPiece.type === 'I' ? SRS_KICKS_I[key] : SRS_KICKS[key];
 
-    for (const [dc, dr] of kicks) {
+    for (let i = 0; i < kicks.length; i++) {
+        const [dc, dr] = kicks[i];
         const p = { ...currentPiece, rotation: nextRot, col: currentPiece.col + dc, row: currentPiece.row + dr };
         if (isValid(p)) {
             currentPiece = p;
+            lastKickIndex = i;
             AudioManager.sfx('rotate');
             if (lockPending) handleLockReset();
             lastMoveWasRotate = true;
@@ -221,37 +232,60 @@ function handleLockReset() {
 }
 
 function checkTSpin() {
-    if (currentPiece.type !== 'T' || !lastMoveWasRotate) return false;
-    const { row: r, col: c } = currentPiece;
+    if (currentPiece.type !== 'T' || !lastMoveWasRotate) return null;
+    const { row: r, col: c, rotation: rot } = currentPiece;
     // Check the 4 corners relative to the T-piece center (1,1)
     const corners = [
         [r, c], [r, c + 2], [r + 2, c], [r + 2, c + 2]
     ];
     let occupied = 0;
-    corners.forEach(([cr, cc]) => {
-        if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS || board[cr][cc]) {
-            occupied++;
-        }
+    const isOccupied = corners.map(([cr, cc]) => {
+        const occ = cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS || board[cr][cc];
+        if (occ) occupied++;
+        return !!occ;
     });
-    return occupied >= 3;
+
+    if (occupied < 3) return null;
+
+    // If the 5th SRS kick (index 4) was used, it is always a regular T-Spin
+    if (lastKickIndex === 4) return 'regular';
+
+    // Check "front" corners relative to orientation to distinguish Mini
+    // Indices: 0:TL, 1:TR, 2:BL, 3:BR
+    let frontIndices;
+    if (rot === 0) frontIndices = [0, 1];      // Pointing Up
+    else if (rot === 1) frontIndices = [1, 3]; // Pointing Right
+    else if (rot === 2) frontIndices = [2, 3]; // Pointing Down
+    else if (rot === 3) frontIndices = [0, 2]; // Pointing Left
+
+    const bothFrontOccupied = isOccupied[frontIndices[0]] && isOccupied[frontIndices[1]];
+    return bothFrontOccupied ? 'regular' : 'mini';
 }
 
 // ─── Locking & Line Clearing ──────────────────────────────────────────────────
 function lockPiece() {
     holdUsed = false;
-    const isTSpin = checkTSpin();
+    const tSpinResult = checkTSpin();
+    const isTSpin = tSpinResult === 'regular';
+    const isTSpinMini = tSpinResult === 'mini';
+
     cells(currentPiece).forEach(([r, c]) => { board[r][c] = COLORS[currentPiece.type]; });
     const cleared = clearLines();
 
-    if (cleared > 0 || isTSpin) {
+    if (cleared > 0 || isTSpin || isTSpinMini) {
         const isPerfectClear = board.every(row => row.every(cell => cell === null));
-        const difficultClear = (cleared === 4 || (isTSpin && cleared > 0));
+        const difficultClear = (cleared === 4 || ((isTSpin || isTSpinMini) && cleared > 0));
         
         let points = SCORE_TABLE[cleared];
 
-        if (isTSpin) {
-            points = TSPIN_SCORES[cleared] || points;
-            tSpinType = cleared === 0 ? 'T-SPIN' : `T-SPIN ${['','SINGLE','DOUBLE','TRIPLE'][cleared]}`;
+        if (isTSpin || isTSpinMini) {
+            if (isTSpin) {
+                points = TSPIN_SCORES[cleared] || points;
+                tSpinType = cleared === 0 ? 'T-SPIN' : `T-SPIN ${['','SINGLE','DOUBLE','TRIPLE'][cleared]}`;
+            } else {
+                points = TSPIN_MINI_SCORES[cleared] || points;
+                tSpinType = cleared === 0 ? 'T-SPIN MINI' : `T-SPIN MINI ${['','SINGLE','DOUBLE'][cleared]}`;
+            }
             tSpinTimer = 2000;
             createExplosion(canvas.width / 2, canvas.height / 2, COLORS.T, 40);
         }
@@ -343,6 +377,8 @@ function updateUI() {
         highScore, 
         level, 
         linesCleared, 
+        pps: gameElapsedTime > 0 ? (piecesSpawnedCount / (gameElapsedTime / 1000)).toFixed(2) : '0.00',
+        kpp: piecesSpawnedCount > 0 ? (keyStrokesCount / piecesSpawnedCount).toFixed(2) : '0.00',
         musicMuted: AudioManager.musicMuted, 
         sfxMuted: AudioManager.sfxMuted 
     });
@@ -401,6 +437,7 @@ function loop(timestamp) {
     if (tSpinTimer > 0) tSpinTimer -= delta;
     if (comboTimer > 0) comboTimer -= delta;
     if (b2bTimer > 0) b2bTimer -= delta;
+    gameElapsedTime += delta;
     updateAnimations(delta);
 
     // Handle DAS/ARR for horizontal movement
@@ -440,6 +477,7 @@ function loop(timestamp) {
     }
 
     if (gameState === 'playing') {
+        updateUI();
         draw();
         animId = requestAnimationFrame(loop);
     }
@@ -486,6 +524,11 @@ document.addEventListener('keydown', e => {
 
     if (gameState !== 'playing') return;
 
+    // Count for KPP (Keys Per Piece)
+    if (!['pause', 'mute'].includes(action)) {
+        keyStrokesCount++;
+    }
+
     if (action === 'left') {
         moveLeft();
         activeKeys.left = { timeHeld: 0, lastActionTime: performance.now() };
@@ -531,14 +574,17 @@ canvas.addEventListener('touchend', e => {
     const elapsed  = Date.now() - touchStartTime;
 
     if (adx < 20 && ady < 20) {
-        if (elapsed > 250) holdPiece();  // long press → hold
-        else               rotate();    // quick tap → rotate
+        if (elapsed > 250) holdPiece(); else rotate();
+        keyStrokesCount++;
     } else if (adx > ady) {
         if (dx < 0) moveLeft(); else moveRight();
+        keyStrokesCount++;
     } else if (dy < 0) {
         hardDrop();   // swipe up → hard drop
+        keyStrokesCount++;
     } else {
         softDrop();   // swipe down → soft drop
+        keyStrokesCount++;
     }
 
     draw();

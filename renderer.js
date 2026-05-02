@@ -274,6 +274,9 @@ export function updateUIElements(elements, state) {
     elements.level.textContent = state.level;
     elements.lines.textContent = state.linesCleared;
 
+    if (elements.pps) elements.pps.textContent = state.pps;
+    if (elements.kpp) elements.kpp.textContent = state.kpp;
+
     if (elements.musicCheck) elements.musicCheck.checked = !state.musicMuted;
     if (elements.sfxCheck) elements.sfxCheck.checked = !state.sfxMuted;
 }

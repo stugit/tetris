@@ -55,6 +55,7 @@ export const PIECES = {
 export const PIECE_TYPES = Object.keys(PIECES);
 export const SCORE_TABLE  = [0, 100, 300, 500, 800];
 export const TSPIN_SCORES = [400, 800, 1200, 1600]; // 0, 1, 2, 3 lines
+export const TSPIN_MINI_SCORES = [100, 200, 400];   // 0, 1, 2 lines
 export const COMBO_BONUS  = 50;
 export const B2B_MULTIPLIER = 1.5;
 export const BASE_SPEED   = 800;
