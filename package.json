@@ -2,8 +2,8 @@
   "name": "tetris",
   "private": true,
   "scripts": {
-    "lint": "eslint game.js",
-    "lint:fix": "eslint game.js --fix"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
     "eslint": "^8.57.0"
