@@ -1,3 +1,10 @@
+## [1.14.0](https://github.com/stugit/tetris/compare/v1.13.0...v1.14.0) (2026-05-02)
+
+
+### Features
+
+* scale game up to fill desktop viewport ([80c7114](https://github.com/stugit/tetris/commit/80c711474bb3dca32c3a4ff521f3452d4987498b))
+
 ## [1.13.0](https://github.com/stugit/tetris/compare/v1.12.0...v1.13.0) (2026-05-02)
 
 
@@ -25,11 +32,4 @@
 ### Features
 
 * optimize desktop layout, add hard drop flash, and fix audio continuity ([7f4877c](https://github.com/stugit/tetris/commit/7f4877c54208d32d1fb9f0721003819d170149a1))
-
-## [1.9.0](https://github.com/stugit/tetris/compare/v1.8.0...v1.9.0) (2026-05-02)
-
-
-### Features
-
-* optimize desktop layout, add hard drop flash, and fix audio continuity ([95321d7](https://github.com/stugit/tetris/commit/95321d736913443053da943b5aff89ca05f0538a))
 
