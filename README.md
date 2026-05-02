@@ -67,9 +67,10 @@ When committing, try to follow the **Conventional Commits** format: `type(scope)
 
 | Tag | Notes |
 |---|---|
+| [`v1.16.0`](https://github.com/stugit/tetris/releases/tag/v1.16.0) | Stable — bass line, low-pass filter, vibrato, compressor, Theme B/C |
 | [`v1.15.0`](https://github.com/stugit/tetris/releases/tag/v1.15.0) | Stable — desktop fills 100 vh, controls as fixed overlay |
 
-To roll back: `git checkout v1.15.0`
+To roll back: `git checkout v1.16.0`
 
 ## Deployment
 
