@@ -182,6 +182,4 @@ input[type="range"] {
     }
 
     #controls { display: none; }
-
-    #mute-btn { min-width: 130px; }
 }

@@ -1,6 +1,6 @@
 'use strict';
 
-import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY } from './constants.js';
+import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY, LEVEL_THEMES } from './constants.js';
 import { AudioManager } from './audio.js';
 import { drawBoard, drawPreview, drawNextQueue, updateUIElements, updateMetrics, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, updateParticles, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
 
@@ -145,6 +145,7 @@ function loadGame(state) {
     b2bActive = state.b2bActive;
     piecesSpawnedCount = state.piecesSpawnedCount;
     zenMode = state.zenMode;
+    if (UI_ELEMENTS.zenCheck) UI_ELEMENTS.zenCheck.checked = zenMode;
     keyStrokesCount = state.keyStrokesCount;
     gameElapsedTime = state.gameElapsedTime;
     bag = state.bag || [];
@@ -319,6 +320,11 @@ function lockPiece() {
         
         let points = SCORE_TABLE[cleared];
 
+        if (cleared > 0) {
+            const theme = LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
+            createExplosion(canvas.width / 2, canvas.height / 2, theme.accent, cleared * 20);
+        }
+
         if (isTSpin || isTSpinMini) {
             if (isTSpin) {
                 points = TSPIN_SCORES[cleared] || points;
@@ -356,10 +362,11 @@ function lockPiece() {
             perfectClearTimer = 2000;
             createExplosion(canvas.width / 2, canvas.height / 2, '#ffd700', 100);
             triggerShake(15, 500); // Massive shake for All Clear
-        }
-        if (cleared === 4) {
+        } else if (cleared === 4) {
             createExplosion(canvas.width / 2, canvas.height / 2, COLORS.I, 60);
             triggerShake(10, 300); // Strong shake for Tetris
+        } else if (cleared > 0) {
+            triggerShake(cleared * 2 + 1, 100 + cleared * 50); // Proportional shake for Single/Double/Triple
         }
         score        += points * level;
         linesCleared += cleared;

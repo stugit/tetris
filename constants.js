@@ -1,6 +1,7 @@
 export const COLS = 10;
 export const ROWS = 20;
 export const CELL = 30;
+export const BPM = 160;
 
 export const COLORS = {
     I: '#00BCD4', O: '#FDD835', T: '#AB47BC',

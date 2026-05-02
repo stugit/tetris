@@ -1,4 +1,4 @@
-import { CELL, PIECES, COLORS, ROWS, COLS, LEVEL_THEMES } from './constants.js';
+import { CELL, PIECES, COLORS, ROWS, COLS, LEVEL_THEMES, BPM } from './constants.js';
 
 export function drawCell(context, r, c, color, alpha = 1) {
     const x = c * CELL + 1, y = r * CELL + 1, s = CELL - 2;
@@ -233,6 +233,7 @@ export function drawB2B(ctx, timer) {
 }
 
 let particles = [];
+let totalTime = 0;
 
 /**
  * Creates a burst of square particles at a specific location.
@@ -248,7 +249,8 @@ export function createExplosion(x, y, color, count = 30) {
             size: Math.random() * 5 + 2,
             color,
             life: 1.0,
-            decay: Math.random() * 0.02 + 0.015
+            decay: Math.random() * 0.02 + 0.015,
+            history: []
         });
     }
 }
@@ -259,6 +261,7 @@ export function triggerShake(intensity, duration) {
 }
 
 export function updateAnimations(delta) {
+    totalTime += delta;
     if (shakeTimer > 0) shakeTimer -= delta;
     updateParticles(delta);
 }
@@ -267,6 +270,8 @@ export function updateParticles(delta) {
     // Normalize decay to frame rate (assuming ~60fps)
     const step = delta / 16.67;
     particles = particles.filter(p => {
+        p.history.push({ x: p.x, y: p.y });
+        if (p.history.length > 6) p.history.shift();
         p.x += p.vx * step;
         p.y += p.vy * step;
         p.life -= p.decay * step;
@@ -276,10 +281,23 @@ export function updateParticles(delta) {
 
 export function drawParticles(ctx) {
     ctx.save();
+    const freq = (2 * Math.PI * BPM) / 60000;
+    const pulse = 1 + Math.sin(totalTime * freq) * 0.3;
     particles.forEach(p => {
+        // Draw trail segments
+        p.history.forEach((pos, i) => {
+            const ratio = i / p.history.length;
+            ctx.globalAlpha = p.life * ratio * 0.4;
+            ctx.fillStyle = p.color;
+            const s = p.size * pulse * ratio;
+            ctx.fillRect(pos.x - s / 2, pos.y - s / 2, s, s);
+        });
+
+        // Draw main particle
         ctx.globalAlpha = p.life;
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        const s = p.size * pulse;
+        ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
     });
     ctx.restore();
 }
@@ -287,6 +305,7 @@ export function drawParticles(ctx) {
 export function clearParticles() {
     particles = [];
     shakeTimer = 0;
+    totalTime = 0;
 }
 
 export function updateMetrics(elements, state) {

@@ -1,4 +1,4 @@
-const BPM = 160;
+import { BPM } from './constants.js';
 const E8  = 60 / BPM / 2;
 
 const FREQ = {

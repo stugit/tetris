@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   lint:
@@ -35,7 +35,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git diff --quiet || (
-            git add *.js &&
+            git add -u &&
             git commit -m "ci: auto-fix lint [skip ci]" &&
             git push
           )

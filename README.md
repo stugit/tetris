@@ -48,6 +48,21 @@ Level increases every 10 lines. Speed increases with each level. High score is s
 
 Open `index.html` directly in any modern browser — no server required.
 
+## Development
+
+### Linting & Tooling
+The project uses ESLint for code quality. 
+1. Run `npm install` to install the linter.
+2. Check code: `npm run lint`
+3. Fix issues: `npm run lint:fix`
+
+### Commit Message Template
+To keep the project history organized, we use a commit template. To enable it locally, run:
+```bash
+git config commit.template .gitmessage
+```
+When committing, try to follow the **Conventional Commits** format: `type(scope): description`.
+
 ## Deployment
 
 Pushes to `main` automatically lint and deploy to GitHub Pages via the workflow in `.github/workflows/deploy.yml`. To enable for a new fork, go to **Settings → Pages** and set the source to **GitHub Actions**.

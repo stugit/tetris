@@ -8,19 +8,26 @@ Open `index.html` directly in a browser — no build step, no server required. A
 
 - `index.html` — markup and canvas elements
 - `style.css` — styling and responsive layout
-- `game.js` — all game logic (no framework, no bundler)
+- `game.js` — entry point, game state, and input handling
+- `audio.js` — Web Audio API management for music and SFX
+- `constants.js` — board dimensions, piece definitions, and SRS kick tables
+- `renderer.js` — all drawing logic, animations, and particle effects
 
 ## Architecture
 
-The entire game is a single `game.js` file (~410 lines) with no dependencies. Key sections, marked by banner comments:
+The game uses modern ES modules. Key sections in `game.js`:
 
-- **Constants** — board dimensions (`COLS=10`, `ROWS=20`, `CELL=30px`), piece rotation tables (`PIECES`), scoring (`SCORE_TABLE`), and speed curve (`BASE_SPEED`, `MIN_SPEED`, `SPEED_STEP`).
-- **State** — six mutable globals: `board` (2-D array of color strings or `null`), `currentPiece` and `nextType`, `score`/`highScore`/`level`/`linesCleared`, `gameState` (`'idle'|'playing'|'paused'|'over'`), and rAF/timer handles.
+- **State** — mutable globals: `board`, `currentPiece`, `nextQueue`, `holdType`, `score`, `highScore`, `level`, `linesCleared`, `gameState`, and gameplay settings (DAS/ARR/SDR).
 - **Movement** — `moveLeft/Right/Down`, `hardDrop`, `rotate` (with ±1/±2 column wall-kick). All mutate `currentPiece` in-place only if `isValid` passes.
 - **Locking & line clearing** — `lockPiece` writes cells to `board`, calls `clearLines` (splice-and-unshift), then updates score/level and spawns the next piece.
-- **Drawing** — `draw()` repaints everything each frame: background, grid, locked cells, ghost piece (20% alpha), active piece, and the next-piece preview canvas.
+- **Drawing** — `draw()` delegates to `renderer.js` to repaint the board, pieces, UI overlays, and particles.
 - **Game loop** — `requestAnimationFrame` loop; gravity is time-based via `dropTimer` accumulator compared against `dropSpeed()`.
-- **Input** — keyboard (`keydown`) + touch/swipe on the canvas + on-screen button overlay. DAS (Delayed Auto-Shift) is implemented for held left/right/soft-drop buttons.
+- **Linting** — Uses ESLint. Commands: `npm run lint` (check), `npm run lint:fix` (auto-fix).
+
+## Development Commands
+- `node scripts/install-hook.js`: Install local git pre-commit hook for linting.
+- `npm install`: Install dev dependencies (ESLint).
+- **Input** — keyboard (`keydown`) + touch/swipe on the canvas. Custom DAS (Delayed Auto-Shift) and ARR (Auto-Repeat Rate) handle held keys.
 
 High score is persisted in `localStorage` under the key `tetrisHighScore`.
 
