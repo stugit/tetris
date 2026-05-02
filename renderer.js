@@ -69,6 +69,7 @@ export function drawNextQueue(context, canvasObj, queue) {
 
 let shakeTimer = 0;
 let shakeIntensity = 0;
+let flashTimer = 0;
 
 const stars = Array.from({ length: STAR_COUNT }, () => ({
     x: Math.random() * (COLS * CELL),
@@ -77,13 +78,8 @@ const stars = Array.from({ length: STAR_COUNT }, () => ({
     speed: Math.random() * 0.02 + 0.01
 }));
 
-export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false, showGhost = true, lockPending = false, lockTimer = 0) {
-    const theme = zenMode 
-        ? { bg: '#110b1c', accent: '#c084fc', grid: 'rgba(192, 132, 252, 0.08)' }
-        : LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
-
-    const freq = (2 * Math.PI * BPM) / 60000;
-    const pulse = 0.7 + Math.sin(totalTime * freq) * 0.3;
+export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false) {
+    const theme = LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
 
     // Local helper to draw the "physical" game content (grid + pieces)
     const drawGameContent = (targetCtx, offset = 0) => {
@@ -100,22 +96,12 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
         }
 
         if (currentPiece) {
-            if (showGhost) {
-                ghostCells.forEach(([r, c]) => {
-                    drawCell(targetCtx, r, c, COLORS[currentPiece.type], 0.2);
-                });
-            }
+            ghostCells.forEach(([r, c]) => {
+                drawCell(targetCtx, r, c, COLORS[currentPiece.type], 0.2);
+            });
             PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
                 drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
             });
-
-            // Lock delay flash effect: Pulsing white highlight
-            if (lockPending) {
-                const flashAlpha = Math.sin(lockTimer * 0.03) * 0.3 + 0.3;
-                PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
-                    drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, '#ffffff', flashAlpha);
-                });
-            }
         }
         targetCtx.restore();
     };
@@ -156,7 +142,7 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
     ctx.fillStyle = '#ffffff';
     stars.forEach(s => {
         // parralax effect: faster stars are brighter/closer
-        ctx.globalAlpha = s.speed * 30 * (zenMode ? pulse : 1);
+        ctx.globalAlpha = s.speed * 30;
         ctx.fillRect(s.x, s.y, s.size, s.size);
     });
     ctx.globalAlpha = 1;
@@ -176,7 +162,16 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
     // Draw the main game content (center/normal)
     drawGameContent(ctx, 0);
 
+    if (flashTimer > 0) {
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.4, flashTimer / 150 * 0.4)})`;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.restore();
+    }
+
     if (zenMode) {
+        const freq = (2 * Math.PI * BPM) / 60000;
+        const pulse = 0.7 + Math.sin(totalTime * freq) * 0.3;
         ctx.font = 'bold 14px "Courier New"';
         ctx.fillStyle = `rgba(192, 132, 252, ${pulse})`;
         ctx.textAlign = 'right';
@@ -187,6 +182,7 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
     ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 4;
     if (zenMode) {
+        const freq = (2 * Math.PI * BPM) / 60000;
         const glowPulse = 8 + Math.sin(totalTime * freq) * 6;
         // Add a glow effect to the border in Zen Mode
         ctx.shadowColor = '#a855f7';
@@ -332,9 +328,14 @@ export function triggerShake(intensity, duration) {
     shakeTimer = duration;
 }
 
+export function triggerFlash(duration) {
+    flashTimer = duration;
+}
+
 export function updateAnimations(delta, level = 1) {
     totalTime += delta;
     if (shakeTimer > 0) shakeTimer -= delta;
+    if (flashTimer > 0) flashTimer -= delta;
     updateParticles(delta);
 
     // Update Starfield
@@ -384,6 +385,7 @@ export function drawParticles(ctx) {
 export function clearParticles() {
     particles = [];
     shakeTimer = 0;
+    flashTimer = 0;
     totalTime = 0;
 }
 
