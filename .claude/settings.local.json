@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx eslint *)",
+      "Bash(node *)",
+      "Bash(git -C \"E:/workspace/tetris\" status)",
+      "Bash(git -C \"E:/workspace/tetris\" log --oneline -5)"
+    ]
+  }
+}

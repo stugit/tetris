@@ -1,207 +1,8 @@
 'use strict';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const COLS = 10;
-const ROWS = 20;
-const CELL = 30;
-
-const COLORS = {
-    I: '#00BCD4', O: '#FDD835', T: '#AB47BC',
-    S: '#66BB6A', Z: '#EF5350', J: '#42A5F5', L: '#FFA726',
-};
-
-// Each rotation state is an array of [row, col] offsets within the 4×4 bounding box
-const PIECES = {
-    I: [
-        [[1,0],[1,1],[1,2],[1,3]],
-        [[0,2],[1,2],[2,2],[3,2]],
-        [[2,0],[2,1],[2,2],[2,3]],
-        [[0,1],[1,1],[2,1],[3,1]],
-    ],
-    O: [
-        [[0,1],[0,2],[1,1],[1,2]],
-        [[0,1],[0,2],[1,1],[1,2]],
-        [[0,1],[0,2],[1,1],[1,2]],
-        [[0,1],[0,2],[1,1],[1,2]],
-    ],
-    T: [
-        [[0,1],[1,0],[1,1],[1,2]],
-        [[0,1],[1,1],[1,2],[2,1]],
-        [[1,0],[1,1],[1,2],[2,1]],
-        [[0,1],[1,0],[1,1],[2,1]],
-    ],
-    S: [
-        [[0,1],[0,2],[1,0],[1,1]],
-        [[0,1],[1,1],[1,2],[2,2]],
-        [[1,1],[1,2],[2,0],[2,1]],
-        [[0,0],[1,0],[1,1],[2,1]],
-    ],
-    Z: [
-        [[0,0],[0,1],[1,1],[1,2]],
-        [[0,2],[1,1],[1,2],[2,1]],
-        [[1,0],[1,1],[2,1],[2,2]],
-        [[0,1],[1,0],[1,1],[2,0]],
-    ],
-    J: [
-        [[0,0],[1,0],[1,1],[1,2]],
-        [[0,1],[0,2],[1,1],[2,1]],
-        [[1,0],[1,1],[1,2],[2,2]],
-        [[0,1],[1,1],[2,0],[2,1]],
-    ],
-    L: [
-        [[0,2],[1,0],[1,1],[1,2]],
-        [[0,1],[1,1],[2,1],[2,2]],
-        [[1,0],[1,1],[1,2],[2,0]],
-        [[0,0],[0,1],[1,1],[2,1]],
-    ],
-};
-
-const PIECE_TYPES = Object.keys(PIECES);
-const SCORE_TABLE  = [0, 100, 300, 500, 800];
-const BASE_SPEED   = 800;  // ms per gravity drop
-const MIN_SPEED    = 100;
-const SPEED_STEP   = 50;   // ms reduction per level
-
-// ─── Audio ────────────────────────────────────────────────────────────────────
-const AudioManager = (() => {
-    let actx = null, masterGain = null, musicGain = null;
-    let melodyTimer = null, musicActive = false, muted = false;
-
-    const BPM = 160;
-    const E8  = 60 / BPM / 2; // seconds per eighth note
-
-    const FREQ = {
-        A4:440.00, B4:493.88, C5:523.25, D5:587.33,
-        E5:659.25, F5:698.46, G5:783.99, A5:880.00,
-    };
-
-    // Tetris Type A (Korobeiniki) — [note_key | null, eighth_note_count]
-    const MELODY = [
-        // Part A
-        ['E5',2],['B4',1],['C5',1],['D5',2],['C5',1],['B4',1],
-        ['A4',2],['A4',1],['C5',1],['E5',2],['D5',1],['C5',1],
-        ['B4',3],['C5',1],['D5',2],['E5',2],
-        ['C5',2],['A4',2],['A4',4],
-        // Part B
-        [null,1],['A4',1],['B4',2],['C5',4],
-        ['D5',3],['F5',1],['A5',2],['G5',1],['F5',1],
-        ['E5',3],['C5',1],['E5',2],['D5',1],['C5',1],
-        ['B4',2],['B4',1],['C5',1],['D5',2],['E5',2],
-        ['C5',2],['A4',2],['A4',4],
-    ];
-    const MELODY_S = MELODY.reduce((s, [, e]) => s + e * E8, 0);
-
-    function setup() {
-        actx       = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = actx.createGain();
-        masterGain.gain.value = muted ? 0 : 1;
-        masterGain.connect(actx.destination);
-        musicGain  = actx.createGain();
-        musicGain.gain.value = 0;
-        musicGain.connect(masterGain);
-    }
-
-    function ensureCtx() {
-        if (!actx) setup();
-        if (actx.state === 'suspended') actx.resume();
-    }
-
-    function scheduleLoop(loopStart) {
-        let t = loopStart;
-        for (const [note, eighths] of MELODY) {
-            const dur = eighths * E8;
-            if (note && FREQ[note]) {
-                const osc = actx.createOscillator();
-                const env = actx.createGain();
-                osc.type = 'square';
-                osc.frequency.value = FREQ[note];
-                osc.connect(env);
-                env.connect(musicGain);
-                env.gain.setValueAtTime(0, t);
-                env.gain.linearRampToValueAtTime(1, t + 0.01);
-                env.gain.setValueAtTime(1, t + dur * 0.75);
-                env.gain.linearRampToValueAtTime(0, t + dur * 0.92);
-                osc.start(t);
-                osc.stop(t + dur);
-            }
-            t += dur;
-        }
-        melodyTimer = setTimeout(
-            () => { if (musicActive) scheduleLoop(loopStart + MELODY_S); },
-            (MELODY_S - 0.2) * 1000
-        );
-    }
-
-    function tone(freq, start, dur, wave = 'sine', vol = 0.15) {
-        const osc = actx.createOscillator();
-        const g   = actx.createGain();
-        osc.type = wave;
-        osc.frequency.value = freq;
-        osc.connect(g);
-        g.connect(masterGain);
-        g.gain.setValueAtTime(vol, start);
-        g.gain.exponentialRampToValueAtTime(0.001, start + dur);
-        osc.start(start);
-        osc.stop(start + dur);
-    }
-
-    return {
-        startMusic() {
-            ensureCtx();
-            if (musicActive) return;
-            musicActive = true;
-            musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.3);
-            scheduleLoop(actx.currentTime + 0.05);
-        },
-        pauseMusic() {
-            if (!actx) return;
-            musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.2);
-        },
-        resumeMusic() {
-            if (!actx || muted) return;
-            musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.2);
-        },
-        stopMusic() {
-            musicActive = false;
-            clearTimeout(melodyTimer);
-            if (actx) musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.15);
-        },
-        sfx(type, count = 1) {
-            ensureCtx();
-            if (muted) return;
-            const now = actx.currentTime;
-            switch (type) {
-                case 'move':    tone(220, now, 0.04, 'sine', 0.08); break;
-                case 'rotate':  tone(440, now, 0.06, 'sine', 0.10); break;
-                case 'land':    tone(110, now, 0.10, 'sine', 0.12); break;
-                case 'clear': {
-                    const freqs = [523, 659, 784, 1047, 1319];
-                    freqs.slice(0, Math.min(count + 1, 5)).forEach(
-                        (f, i) => tone(f, now + i * 0.07, 0.20, 'sine', 0.20)
-                    );
-                    break;
-                }
-                case 'levelup':
-                    [523, 659, 784, 1047].forEach(
-                        (f, i) => tone(f, now + i * 0.10, 0.15, 'square', 0.12)
-                    );
-                    break;
-                case 'gameover':
-                    [440, 415, 392, 370, 349, 330].forEach(
-                        (f, i) => tone(f, now + i * 0.13, 0.18, 'sawtooth', 0.18)
-                    );
-                    break;
-            }
-        },
-        toggleMute() {
-            muted = !muted;
-            ensureCtx();
-            masterGain.gain.setTargetAtTime(muted ? 0 : 1, actx.currentTime, 0.1);
-            return muted;
-        },
-        get muted() { return muted; },
-    };
-})();
+import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS } from './constants.js';
+import { AudioManager } from './audio.js';
+import { drawBoard, drawPreview, updateUIElements } from './renderer.js';
 
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('board');
@@ -212,10 +13,13 @@ const holdCanvas  = document.getElementById('hold');
 const holdCtx     = holdCanvas.getContext('2d');
 const overlay     = document.getElementById('overlay');
 const overlayMsg  = document.getElementById('overlay-msg');
-const scoreEl     = document.getElementById('score');
-const highScoreEl = document.getElementById('high-score');
-const levelEl     = document.getElementById('level');
-const linesEl     = document.getElementById('lines');
+
+const UI_ELEMENTS = {
+    score:     document.getElementById('score'),
+    highScore: document.getElementById('high-score'),
+    level:     document.getElementById('level'),
+    lines:     document.getElementById('lines')
+};
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let board, currentPiece, nextType, holdType, holdUsed;
@@ -240,6 +44,7 @@ function randomType() {
 }
 
 function cells(piece) {
+    if (!piece) return [];
     return PIECES[piece.type][piece.rotation].map(([r, c]) => [
         piece.row + r,
         piece.col + c,
@@ -412,99 +217,15 @@ function ghostPiece() {
     return g;
 }
 
-// ─── Drawing ──────────────────────────────────────────────────────────────────
-function drawCell(context, r, c, color, alpha = 1) {
-    const x = c * CELL + 1, y = r * CELL + 1, s = CELL - 2;
-    context.globalAlpha = alpha;
-    context.fillStyle = color;
-    context.fillRect(x, y, s, s);
-    // Bevel highlight
-    context.fillStyle = 'rgba(255,255,255,0.25)';
-    context.fillRect(x, y, s, 3);
-    context.fillRect(x, y, 3, s);
-    // Bevel shadow
-    context.fillStyle = 'rgba(0,0,0,0.25)';
-    context.fillRect(x, y + s - 3, s, 3);
-    context.fillRect(x + s - 3, y, 3, s);
-    context.globalAlpha = 1;
-}
-
 function draw() {
-    // Background
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1;
-    for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++)
-            ctx.strokeRect(c * CELL, r * CELL, CELL, CELL);
-
-    // Locked cells
-    for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++)
-            if (board[r][c]) drawCell(ctx, r, c, board[r][c]);
-
-    if (currentPiece) {
-        // Ghost
-        cells(ghostPiece()).forEach(([r, c]) => {
-            ctx.globalAlpha = 0.2;
-            ctx.fillStyle = COLORS[currentPiece.type];
-            ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
-            ctx.globalAlpha = 1;
-        });
-        // Active piece
-        cells(currentPiece).forEach(([r, c]) => drawCell(ctx, r, c, COLORS[currentPiece.type]));
-    }
-
-    // Next piece preview
-    nextCtx.fillStyle = '#16213e';
-    nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-    const previewCells = PIECES[nextType][0];
-    const rs = previewCells.map(([r]) => r), cs = previewCells.map(([, c]) => c);
-    const pH = Math.max(...rs) - Math.min(...rs) + 1;
-    const pW = Math.max(...cs) - Math.min(...cs) + 1;
-    const offR = Math.floor((4 - pH) / 2) - Math.min(...rs);
-    const offC = Math.floor((4 - pW) / 2) - Math.min(...cs);
-    previewCells.forEach(([r, c]) => {
-        const x = (c + offC) * CELL + 1, y = (r + offR) * CELL + 1, s = CELL - 2;
-        nextCtx.fillStyle = COLORS[nextType];
-        nextCtx.fillRect(x, y, s, s);
-        nextCtx.fillStyle = 'rgba(255,255,255,0.25)';
-        nextCtx.fillRect(x, y, s, 3);
-        nextCtx.fillRect(x, y, 3, s);
-    });
-
-    // Hold piece preview (dimmed while holdUsed)
-    holdCtx.fillStyle = '#16213e';
-    holdCtx.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
-    if (holdType) {
-        const hCells = PIECES[holdType][0];
-        const hRs = hCells.map(([r]) => r), hCs = hCells.map(([, c]) => c);
-        const hH = Math.max(...hRs) - Math.min(...hRs) + 1;
-        const hW = Math.max(...hCs) - Math.min(...hCs) + 1;
-        const hOR = Math.floor((4 - hH) / 2) - Math.min(...hRs);
-        const hOC = Math.floor((4 - hW) / 2) - Math.min(...hCs);
-        holdCtx.globalAlpha = holdUsed ? 0.3 : 1;
-        hCells.forEach(([r, c]) => {
-            const x = (c + hOC) * CELL + 1, y = (r + hOR) * CELL + 1, s = CELL - 2;
-            holdCtx.fillStyle = COLORS[holdType];
-            holdCtx.fillRect(x, y, s, s);
-            holdCtx.fillStyle = 'rgba(255,255,255,0.25)';
-            holdCtx.fillRect(x, y, s, 3);
-            holdCtx.fillRect(x, y, 3, s);
-        });
-        holdCtx.globalAlpha = 1;
-    }
+    drawBoard(ctx, board, currentPiece, cells(ghostPiece()));
+    drawPreview(nextCtx, nextCanvas, nextType);
+    drawPreview(holdCtx, holdCanvas, holdType, holdUsed);
 }
 
 // ─── UI ───────────────────────────────────────────────────────────────────────
 function updateUI() {
-    scoreEl.textContent     = score;
-    highScoreEl.textContent = highScore;
-    levelEl.textContent     = level;
-    linesEl.textContent     = linesCleared;
+    updateUIElements(UI_ELEMENTS, { score, highScore, level, linesCleared, muted: AudioManager.muted });
 }
 
 // ─── Game State ───────────────────────────────────────────────────────────────
@@ -541,11 +262,11 @@ function gameOver() {
     if (score > highScore) {
         highScore = score;
         localStorage.setItem('tetrisHighScore', highScore);
-        highScoreEl.textContent = highScore;
         overlayMsg.textContent  = `NEW BEST!\n${score} pts\nPress Space to Restart`;
     } else {
         overlayMsg.textContent = `GAME OVER\n${score} pts\nPress Space to Restart`;
     }
+    updateUI();
     overlay.style.display = 'flex';
 }
 
@@ -580,11 +301,6 @@ function loop(timestamp) {
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
-function updateMuteBtn() {
-    const btn = document.getElementById('mute-btn');
-    if (btn) btn.textContent = AudioManager.muted ? 'SOUND: OFF' : 'SOUND: ON';
-}
-
 document.addEventListener('keydown', e => {
     if (e.code === 'Space') {
         e.preventDefault();
@@ -598,7 +314,7 @@ document.addEventListener('keydown', e => {
     }
     if (e.code === 'KeyM') {
         AudioManager.toggleMute();
-        updateMuteBtn();
+        updateUI();
         return;
     }
     if (gameState !== 'playing') return;
@@ -700,12 +416,16 @@ window.addEventListener('orientationchange', () => setTimeout(scaleToFit, 400));
 
 document.getElementById('mute-btn').addEventListener('click', () => {
     AudioManager.toggleMute();
-    updateMuteBtn();
+    updateUI();
 });
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
+score                   = 0;
+level                   = 1;
+linesCleared            = 0;
 highScore               = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
-highScoreEl.textContent = highScore;
+
+updateUI();
 ctx.fillStyle           = '#1a1a2e';
 ctx.fillRect(0, 0, canvas.width, canvas.height);

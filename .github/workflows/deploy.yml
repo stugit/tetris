@@ -35,7 +35,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git diff --quiet || (
-            git add game.js &&
+            git add *.js &&
             git commit -m "ci: auto-fix lint [skip ci]" &&
             git push
           )
@@ -63,7 +63,7 @@ jobs:
 
       # Copy only the three game files — keeps node_modules out of the artifact.
       - name: Bundle site
-        run: mkdir dist && cp index.html style.css game.js dist/
+        run: mkdir dist && cp index.html style.css *.js dist/
 
       - uses: actions/upload-pages-artifact@v3
         with:
