@@ -218,9 +218,7 @@ function hardDrop() {
     lockPending = false;
     lockTimer   = 0;
     lockMoves   = 0;
-    while (tryMoveDown()) {
-        // Continue moving down until a collision is detected
-    }
+    while (tryMoveDown()); // Move down until collision
     triggerShake(4, 100);    // Subtle shake on impact
     AudioManager.sfx('harddrop');
     lockPiece();
