@@ -276,27 +276,52 @@ function handleLockReset() {
     }
 }
 
-function checkTSpin() {
-    if (currentPiece.type !== 'T' || !lastMoveWasRotate) return null;
-    const { row: r, col: c, rotation: rot } = currentPiece;
-    // Check the 4 corners relative to the T-piece center (1,1)
-    const corners = [
-        [r, c], [r, c + 2], [r + 2, c], [r + 2, c + 2]
-    ];
+/**
+ * Returns T-Spin info for a given piece position.
+ * @returns { occupied: number, lines: number } | null
+ */
+function getTSpinInfo(p) {
+    if (p.type !== 'T') return null;
+    const { row: r, col: c } = p;
+    const corners = [[r, c], [r, c + 2], [r + 2, c], [r + 2, c + 2]];
     let occupied = 0;
-    const isOccupied = corners.map(([cr, cc]) => {
-        const occ = cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS || board[cr][cc];
-        if (occ) occupied++;
-        return !!occ;
+    corners.forEach(([cr, cc]) => {
+        if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS || board[cr][cc]) occupied++;
     });
 
     if (occupied < 3) return null;
 
+    // Simulate line clears
+    const pCells = cells(p);
+    const rowsToCheck = [...new Set(pCells.map(([pr]) => pr))];
+    let lines = 0;
+    rowsToCheck.forEach(ry => {
+        if (ry >= 0 && ry < ROWS) {
+            const isFull = board[ry].every((cell, cx) => 
+                cell !== null || pCells.some(([px, py]) => px === ry && py === cx)
+            );
+            if (isFull) lines++;
+        }
+    });
+
+    return { occupied, lines };
+}
+
+function checkTSpin() {
+    if (currentPiece.type !== 'T' || !lastMoveWasRotate) return null;
+    const info = getTSpinInfo(currentPiece);
+    if (!info) return null;
+
     // If the 5th SRS kick (index 4) was used, it is always a regular T-Spin
     if (lastKickIndex === 4) return 'regular';
 
+    const { row: r, col: c, rotation: rot } = currentPiece;
+    const corners = [[r, c], [r, c + 2], [r + 2, c], [r + 2, c + 2]];
+    const isOccupied = corners.map(([cr, cc]) => 
+        cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS || board[cr][cc]
+    );
+
     // Check "front" corners relative to orientation to distinguish Mini
-    // Indices: 0:TL, 1:TR, 2:BL, 3:BR
     let frontIndices;
     if (rot === 0) frontIndices = [0, 1];      // Pointing Up
     else if (rot === 1) frontIndices = [1, 3]; // Pointing Right
@@ -411,7 +436,14 @@ function ghostPiece() {
 }
 
 function draw() {
-    drawBoard(ctx, board, currentPiece, cells(ghostPiece()), level, zenMode, showGhost, lockPending, lockTimer);
+    const ghost = ghostPiece();
+    const ghostTSpinInfo = ghost ? getTSpinInfo(ghost) : null;
+    
+    drawBoard(
+        ctx, board, currentPiece, cells(ghost), 
+        level, zenMode, showGhost, lockPending, lockTimer,
+        ghostTSpinInfo
+    );
     drawNextQueue(nextCtx, nextCanvas, nextQueue);
     drawPreview(holdCtx, holdCanvas, holdType, holdUsed);
     if (levelUpTimer > 0) drawLevelUp(ctx, levelUpTimer);

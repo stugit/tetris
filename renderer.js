@@ -77,7 +77,7 @@ const stars = Array.from({ length: STAR_COUNT }, () => ({
     speed: Math.random() * 0.02 + 0.01
 }));
 
-export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false, showGhost = true, lockPending = false, lockTimer = 0) {
+export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false, showGhost = true, lockPending = false, lockTimer = 0, ghostTSpinInfo = null) {
     const theme = zenMode 
         ? { bg: '#110b1c', accent: '#c084fc', grid: 'rgba(192, 132, 252, 0.08)' }
         : LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
@@ -101,9 +101,21 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
 
         if (currentPiece) {
             if (showGhost && ghostCells) {
+                const isTST = ghostTSpinInfo && ghostTSpinInfo.lines === 3;
                 ghostCells.forEach(([r, c]) => {
-                    drawCell(targetCtx, r, c, COLORS[currentPiece.type], 0.2);
+                    const color = isTST ? '#ffd700' : COLORS[currentPiece.type];
+                    drawCell(targetCtx, r, c, color, 0.2);
                 });
+
+                // Draw T-Spin setup indicator
+                if (ghostTSpinInfo) {
+                    targetCtx.font = 'bold 10px "Courier New"';
+                    targetCtx.fillStyle = isTST ? '#ffd700' : '#AB47BC';
+                    targetCtx.textAlign = 'center';
+                    const centerC = currentPiece.col + 1;
+                    const topR = Math.min(...ghostCells.map(([r]) => r));
+                    targetCtx.fillText(isTST ? '!!! TST !!!' : 'T-SPIN?', centerC * CELL + CELL/2, topR * CELL - 5);
+                }
             }
             PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
                 drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
