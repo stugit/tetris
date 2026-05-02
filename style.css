@@ -112,14 +112,13 @@ h1 {
 }
 
 #controls {
-    font-size: 0.7rem;
-    color: #505080;
+    position: fixed;
+    bottom: 14px;
+    right: 18px;
+    font-size: 0.65rem;
+    color: #404068;
     line-height: 1.8;
-}
-
-.gesture-hint {
-    color: #3a3a60;
-    margin-top: 4px;
+    pointer-events: none;
 }
 
 #settings {
