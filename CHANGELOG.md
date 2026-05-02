@@ -1,3 +1,10 @@
+## [1.10.0](https://github.com/stugit/tetris/compare/v1.9.0...v1.10.0) (2026-05-02)
+
+
+### Features
+
+* optimize desktop layout, add hard drop flash, and fix audio continuity ([7f4877c](https://github.com/stugit/tetris/commit/7f4877c54208d32d1fb9f0721003819d170149a1))
+
 ## [1.9.0](https://github.com/stugit/tetris/compare/v1.8.0...v1.9.0) (2026-05-02)
 
 
@@ -27,11 +34,4 @@
 
 * complete modern engine with SRS, T-Spins, Zen mode, and immersive visuals ([be8502d](https://github.com/stugit/tetris/commit/be8502d73d000024582d173f53131972ee8c89bb))
 * complete modern engine with SRS, T-Spins, Zen mode, and immersive visuals ([b838fd9](https://github.com/stugit/tetris/commit/b838fd999582aaaa79c29ba972f7d3fcc4b1e908))
-
-## [1.5.0](https://github.com/stugit/tetris/compare/v1.4.0...v1.5.0) (2026-05-02)
-
-
-### Features
-
-* complete modern engine with SRS, T-Spins, Zen mode, and immersive visuals ([b3cfcd3](https://github.com/stugit/tetris/commit/b3cfcd3bd51e4e15cc2ca0816f3b4e27b6523ce1))
 
