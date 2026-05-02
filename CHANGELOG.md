@@ -1,3 +1,10 @@
+## [1.13.0](https://github.com/stugit/tetris/compare/v1.12.0...v1.13.0) (2026-05-02)
+
+
+### Features
+
+* add TST setup warnings, mobile layout optimizations, and gapless audio scheduling ([1edb0b8](https://github.com/stugit/tetris/commit/1edb0b8a4f529425767e4fc3c29049ceeb83c73e))
+
 ## [1.12.0](https://github.com/stugit/tetris/compare/v1.11.0...v1.12.0) (2026-05-02)
 
 
@@ -25,12 +32,4 @@
 ### Features
 
 * optimize desktop layout, add hard drop flash, and fix audio continuity ([95321d7](https://github.com/stugit/tetris/commit/95321d736913443053da943b5aff89ca05f0538a))
-
-## [1.8.0](https://github.com/stugit/tetris/compare/v1.7.0...v1.8.0) (2026-05-02)
-
-
-### Features
-
-* optimize desktop layout, add hard drop flash, and fix audio continuity ([47785bb](https://github.com/stugit/tetris/commit/47785bb7ae4d6b0a837f5970209909ca33b346d5))
-* optimize desktop layout, add hard drop flash, and fix audio continuity ([21ed862](https://github.com/stugit/tetris/commit/21ed86283046188b6ba2db363fdf5afffff9e21c))
 
