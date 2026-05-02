@@ -78,7 +78,37 @@ const stars = Array.from({ length: STAR_COUNT }, () => ({
 }));
 
 export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false) {
-    const theme = LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
+    const theme = zenMode 
+        ? { bg: '#110b1c', accent: '#c084fc', grid: 'rgba(192, 132, 252, 0.08)' }
+        : LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
+
+    const freq = (2 * Math.PI * BPM) / 60000;
+    const pulse = 0.7 + Math.sin(totalTime * freq) * 0.3;
+
+    // Local helper to draw the "physical" game content (grid + pieces)
+    const drawGameContent = (targetCtx, offset = 0) => {
+        targetCtx.save();
+        if (offset !== 0) targetCtx.translate(offset, 0);
+        
+        targetCtx.strokeStyle = theme.grid;
+        targetCtx.lineWidth = 1;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                targetCtx.strokeRect(c * CELL, r * CELL, CELL, CELL);
+                if (board[r][c]) drawCell(targetCtx, r, c, board[r][c]);
+            }
+        }
+
+        if (currentPiece) {
+            ghostCells.forEach(([r, c]) => {
+                drawCell(targetCtx, r, c, COLORS[currentPiece.type], 0.2);
+            });
+            PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
+                drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
+            });
+        }
+        targetCtx.restore();
+    };
 
     ctx.save();
     if (shakeTimer > 0) {
@@ -116,49 +146,41 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
     ctx.fillStyle = '#ffffff';
     stars.forEach(s => {
         // parralax effect: faster stars are brighter/closer
-        ctx.globalAlpha = s.speed * 30;
+        ctx.globalAlpha = s.speed * 30 * (zenMode ? pulse : 1);
         ctx.fillRect(s.x, s.y, s.size, s.size);
     });
     ctx.globalAlpha = 1;
 
-    ctx.strokeStyle = theme.grid;
-    ctx.lineWidth = 1;
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            ctx.strokeRect(c * CELL, r * CELL, CELL, CELL);
-            if (board[r][c]) drawCell(ctx, r, c, board[r][c]);
-        }
+    // Apply chromatic aberration if shaking
+    if (shakeTimer > 0) {
+        const amt = shakeIntensity * 0.3; // Shift amount
+        ctx.save();
+        // Using 'screen' blending to create the color-bleed look
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = 0.5;
+        drawGameContent(ctx, -amt); // Shift Left (simulating Cyan/Blue)
+        drawGameContent(ctx, amt);  // Shift Right (simulating Red)
+        ctx.restore();
     }
 
-    if (currentPiece) {
-        // Draw Ghost
-        ghostCells.forEach(([r, c]) => {
-            ctx.globalAlpha = 0.2;
-            ctx.fillStyle = COLORS[currentPiece.type];
-            ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
-            ctx.globalAlpha = 1;
-        });
-
-        // Draw Active Piece
-        PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
-            drawCell(ctx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
-        });
-    }
+    // Draw the main game content (center/normal)
+    drawGameContent(ctx, 0);
 
     if (zenMode) {
-        ctx.font = 'bold 12px "Courier New"';
-        ctx.fillStyle = '#c084fc';
+        ctx.font = 'bold 14px "Courier New"';
+        ctx.fillStyle = `rgba(192, 132, 252, ${pulse})`;
         ctx.textAlign = 'right';
-        ctx.fillText('ZEN', ctx.canvas.width - 8, 18);
+        ctx.fillText('ZEN MODE', ctx.canvas.width - 8, 22);
     }
 
     // Draw internal level-based border
-    ctx.strokeStyle = zenMode ? '#c084fc' : theme.accent;
+    ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 4;
     if (zenMode) {
+        const glowPulse = 8 + Math.sin(totalTime * freq) * 6;
         // Add a glow effect to the border in Zen Mode
         ctx.shadowColor = '#a855f7';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = glowPulse;
     }
     ctx.strokeRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
