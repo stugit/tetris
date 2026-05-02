@@ -21,12 +21,12 @@ const MELODY = [
 const MELODY_S = MELODY.reduce((s, [, e]) => s + e * E8, 0);
 
 let actx = null, masterGain = null, musicGain = null;
-let melodyTimer = null, musicActive = false, muted = false;
+let melodyTimer = null, musicActive = false, musicMuted = false, sfxMuted = false;
 
 function setup() {
     actx       = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = actx.createGain();
-    masterGain.gain.value = muted ? 0 : 1;
+    masterGain.gain.value = 1;
     masterGain.connect(actx.destination);
     musicGain  = actx.createGain();
     musicGain.gain.value = 0;
@@ -82,7 +82,7 @@ export const AudioManager = {
         ensureCtx();
         if (musicActive) return;
         musicActive = true;
-        musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.3);
+        if (!musicMuted) musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.3);
         scheduleLoop(actx.currentTime + 0.05);
     },
     pauseMusic() {
@@ -90,7 +90,7 @@ export const AudioManager = {
         musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.2);
     },
     resumeMusic() {
-        if (!actx || muted) return;
+        if (!actx || musicMuted) return;
         musicGain.gain.setTargetAtTime(0.12, actx.currentTime, 0.2);
     },
     stopMusic() {
@@ -100,7 +100,7 @@ export const AudioManager = {
     },
     sfx(type, count = 1) {
         ensureCtx();
-        if (muted) return;
+        if (sfxMuted) return;
         const now = actx.currentTime;
         switch (type) {
             case 'move':    tone(220, now, 0.04, 'sine', 0.08); break;
@@ -121,11 +121,15 @@ export const AudioManager = {
                 break;
         }
     },
-    toggleMute() {
-        muted = !muted;
-        ensureCtx();
-        masterGain.gain.setTargetAtTime(muted ? 0 : 1, actx.currentTime, 0.1);
-        return muted;
+    setMusicMuted(val) {
+        musicMuted = val;
+        if (!actx) return;
+        if (musicMuted) this.pauseMusic();
+        else if (musicActive) this.resumeMusic();
     },
-    get muted() { return muted; }
+    setSfxMuted(val) {
+        sfxMuted = val;
+    },
+    get musicMuted() { return musicMuted; },
+    get sfxMuted() { return sfxMuted; }
 };

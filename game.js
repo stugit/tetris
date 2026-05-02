@@ -18,7 +18,9 @@ const UI_ELEMENTS = {
     score:     document.getElementById('score'),
     highScore: document.getElementById('high-score'),
     level:     document.getElementById('level'),
-    lines:     document.getElementById('lines')
+    lines:     document.getElementById('lines'),
+    musicCheck: document.getElementById('music-check'),
+    sfxCheck:   document.getElementById('sfx-check')
 };
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -75,7 +77,6 @@ function initGame() {
     lockPending  = false;
     lockTimer    = 0;
     lockMoves    = 0;
-    highScore    = parseInt(localStorage.getItem('tetrisHighScore') || '0', 10);
     nextType     = randomType();
     spawnPiece();
     updateUI();
@@ -212,6 +213,7 @@ function clearLines() {
 
 // ─── Ghost ────────────────────────────────────────────────────────────────────
 function ghostPiece() {
+    if (!currentPiece) return null;
     let g = { ...currentPiece };
     while (isValid({ ...g, row: g.row + 1 })) g = { ...g, row: g.row + 1 };
     return g;
@@ -225,7 +227,14 @@ function draw() {
 
 // ─── UI ───────────────────────────────────────────────────────────────────────
 function updateUI() {
-    updateUIElements(UI_ELEMENTS, { score, highScore, level, linesCleared, muted: AudioManager.muted });
+    updateUIElements(UI_ELEMENTS, { 
+        score, 
+        highScore, 
+        level, 
+        linesCleared, 
+        musicMuted: AudioManager.musicMuted, 
+        sfxMuted: AudioManager.sfxMuted 
+    });
 }
 
 // ─── Game State ───────────────────────────────────────────────────────────────
@@ -313,7 +322,10 @@ document.addEventListener('keydown', e => {
         return;
     }
     if (e.code === 'KeyM') {
-        AudioManager.toggleMute();
+        // Master toggle: if anything is unmuted, mute all. Otherwise unmute all.
+        const target = !(AudioManager.musicMuted && AudioManager.sfxMuted);
+        AudioManager.setMusicMuted(target);
+        AudioManager.setSfxMuted(target);
         updateUI();
         return;
     }
@@ -414,8 +426,13 @@ window.addEventListener('load', scaleToFit);
 window.addEventListener('resize', scaleToFit);
 window.addEventListener('orientationchange', () => setTimeout(scaleToFit, 400));
 
-document.getElementById('mute-btn').addEventListener('click', () => {
-    AudioManager.toggleMute();
+UI_ELEMENTS.musicCheck.addEventListener('change', e => {
+    AudioManager.setMusicMuted(!e.target.checked);
+    updateUI();
+});
+
+UI_ELEMENTS.sfxCheck.addEventListener('change', e => {
+    AudioManager.setSfxMuted(!e.target.checked);
     updateUI();
 });
 

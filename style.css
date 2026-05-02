@@ -121,20 +121,27 @@ h1 {
     margin-top: 4px;
 }
 
-#mute-btn {
+#settings {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     background: #16213e;
     border: 1px solid #2a2a4a;
-    color: #505080;
-    font-family: 'Courier New', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
     padding: 8px 12px;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
 }
 
-#mute-btn:hover {
+.setting-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: #505080;
+    cursor: pointer;
+    user-select: none;
+}
+
+.setting-item:hover {
     border-color: #c084fc;
     color: #c084fc;
 }

@@ -72,7 +72,7 @@ export function updateUIElements(elements, state) {
     elements.highScore.textContent = state.highScore;
     elements.level.textContent = state.level;
     elements.lines.textContent = state.linesCleared;
-    
-    const muteBtn = document.getElementById('mute-btn');
-    if (muteBtn) muteBtn.textContent = state.muted ? 'SOUND: OFF' : 'SOUND: ON';
+
+    if (elements.musicCheck) elements.musicCheck.checked = !state.musicMuted;
+    if (elements.sfxCheck) elements.sfxCheck.checked = !state.sfxMuted;
 }
