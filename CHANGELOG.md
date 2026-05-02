@@ -1,3 +1,10 @@
+## [1.12.0](https://github.com/stugit/tetris/compare/v1.11.0...v1.12.0) (2026-05-02)
+
+
+### Features
+
+* optimize mobile layout, finalize Zen Mode visuals, and fix audio gaps ([386661e](https://github.com/stugit/tetris/commit/386661ea7752f61f574c393905cd6d3761e26668))
+
 ## [1.11.0](https://github.com/stugit/tetris/compare/v1.10.0...v1.11.0) (2026-05-02)
 
 
@@ -26,11 +33,4 @@
 
 * optimize desktop layout, add hard drop flash, and fix audio continuity ([47785bb](https://github.com/stugit/tetris/commit/47785bb7ae4d6b0a837f5970209909ca33b346d5))
 * optimize desktop layout, add hard drop flash, and fix audio continuity ([21ed862](https://github.com/stugit/tetris/commit/21ed86283046188b6ba2db363fdf5afffff9e21c))
-
-## [1.7.0](https://github.com/stugit/tetris/compare/v1.6.0...v1.7.0) (2026-05-02)
-
-
-### Features
-
-* optimize desktop layout, add hard drop flash, and fix audio continuity ([2a9bdca](https://github.com/stugit/tetris/commit/2a9bdcaaae3a7530942883505045d7403ea14342))
 
