@@ -44,12 +44,12 @@ const MELODY_C = [
     ['B4',2],['G4',2],['G4',4],
 ];
 
-const ALL_MELODIES = [MELODY_A, MELODY_B, MELODY_C];
-let currentMelody = null; // Will hold the active melody array
+const LONG_MELODY = [...MELODY_A, ...MELODY_A, ...MELODY_B, ...MELODY_A, ...MELODY_C];
+let currentMelody = LONG_MELODY;
 
 let nextNoteTime = 0;
 let noteIndex = 0; // Current note in the melody
-const LOOKAHEAD = 0.1; // How far to schedule (seconds)
+const LOOKAHEAD = 0.3; // Increased lookahead window for better stability
 const SCHEDULE_INTERVAL = 25; // How often to check (ms)
 
 let actx = null, masterGain = null, musicGain = null, sfxGain = null; // AudioContext and GainNodes
@@ -80,14 +80,13 @@ function ensureCtx() {
 function scheduler() {
     if (!musicActive) return;
 
-    // If we've fallen behind (e.g. tab backgrounded), sync to current time
-    if (nextNoteTime < actx.currentTime) {
-        nextNoteTime = actx.currentTime + 0.05;
-    }
-
     // Schedule notes that fall within the lookahead window
     while (nextNoteTime < actx.currentTime + LOOKAHEAD) {
-        scheduleNote(currentMelody[noteIndex], nextNoteTime);
+        // Only schedule if the note start time hasn't passed significantly.
+        // This allows the clock to "catch up" without scheduling outdated audio.
+        if (nextNoteTime > actx.currentTime - 0.05) {
+            scheduleNote(currentMelody[noteIndex], nextNoteTime);
+        }
         advanceNote();
     }
     melodyTimer = setTimeout(scheduler, SCHEDULE_INTERVAL);
@@ -123,6 +122,7 @@ function tone(freq, start, dur, wave = 'sine', vol = 0.15) {
     const g   = actx.createGain();
     osc.type = wave;
     osc.frequency.value = freq;
+    osc.frequency.setValueAtTime(freq, start);
     osc.connect(g);
     g.connect(sfxGain);
     g.gain.setValueAtTime(vol, start);
@@ -135,15 +135,8 @@ export const AudioManager = {
     startMusic() {
         ensureCtx();
         if (musicActive) return;
-        musicActive = true;
-
-        // Randomly select a melody
-        const randomIndex = Math.floor(Math.random() * ALL_MELODIES.length);
-        currentMelody = ALL_MELODIES[randomIndex];
-        noteIndex = 0;
-        nextNoteTime = actx.currentTime + 0.05;
-        if (!musicMuted) musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.3);
-        scheduler();
+        musicShouldPlay = true;
+        this.startMusicInternal(true);
     },
     pauseMusic() {
         // Called when game is paused. Stops scheduler, but doesn't change musicShouldPlay.
@@ -156,7 +149,7 @@ export const AudioManager = {
     resumeMusic() {
         // Called when game is unpaused. Restarts scheduler if musicShouldPlay and not muted.
         if (!actx || musicActive || !musicShouldPlay || musicMuted || !currentMelody) return;
-        this.startMusicInternal(); // Use internal helper to start scheduler and set gain
+        this.startMusicInternal(false); // Use internal helper to start scheduler and set gain
     },
     stopMusic() {
         // Called when game is over. Stops scheduler and indicates music should not play.
@@ -166,7 +159,8 @@ export const AudioManager = {
         if (actx) musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.15);
     },
     // Internal helper to start scheduler and set gain, used by startMusic and resumeMusic
-    startMusicInternal() {
+    startMusicInternal(resetIndex = false) {
+        if (resetIndex) noteIndex = 0;
         musicActive = true;
         nextNoteTime = actx.currentTime + 0.05;
         if (!musicMuted) musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.1);
@@ -203,7 +197,7 @@ export const AudioManager = {
             musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
         } else {
             // If unmuted, and music was logically supposed to be playing, resume it.
-            if (musicShouldPlay && !musicActive) this.startMusicInternal();
+            if (musicShouldPlay && !musicActive) this.startMusicInternal(false);
             else if (musicShouldPlay && musicActive) musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.1);
         }
     },
