@@ -1,3 +1,10 @@
+## [1.4.0](https://github.com/stugit/tetris/compare/v1.3.0...v1.4.0) (2026-05-02)
+
+
+### Features
+
+* complete modern engine with SRS, T-Spins, Zen mode, and immersive visuals ([5a2c59a](https://github.com/stugit/tetris/commit/5a2c59afee9850e61dc3261b18b49b0dd067aae5))
+
 ## [1.3.0](https://github.com/stugit/tetris/compare/v1.2.0...v1.3.0) (2026-05-02)
 
 
