@@ -222,7 +222,7 @@ function hardDrop() {
         // Continue moving down until a collision is detected
     }
     triggerShake(4, 100);    // Subtle shake on impact
-    triggerFlash(150);       // Board flash on hard drop
+    AudioManager.sfx('harddrop');
     lockPiece();
     dropTimer = 0;
 }

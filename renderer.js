@@ -69,7 +69,6 @@ export function drawNextQueue(context, canvasObj, queue) {
 
 let shakeTimer = 0;
 let shakeIntensity = 0;
-let flashTimer = 0;
 
 const stars = Array.from({ length: STAR_COUNT }, () => ({
     x: Math.random() * (COLS * CELL),
@@ -161,13 +160,6 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
 
     // Draw the main game content (center/normal)
     drawGameContent(ctx, 0);
-
-    if (flashTimer > 0) {
-        ctx.save();
-        ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.4, flashTimer / 150 * 0.4)})`;
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.restore();
-    }
 
     if (zenMode) {
         const freq = (2 * Math.PI * BPM) / 60000;
@@ -328,14 +320,9 @@ export function triggerShake(intensity, duration) {
     shakeTimer = duration;
 }
 
-export function triggerFlash(duration) {
-    flashTimer = duration;
-}
-
 export function updateAnimations(delta, level = 1) {
     totalTime += delta;
     if (shakeTimer > 0) shakeTimer -= delta;
-    if (flashTimer > 0) flashTimer -= delta;
     updateParticles(delta);
 
     // Update Starfield
@@ -385,7 +372,6 @@ export function drawParticles(ctx) {
 export function clearParticles() {
     particles = [];
     shakeTimer = 0;
-    flashTimer = 0;
     totalTime = 0;
 }
 

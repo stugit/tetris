@@ -98,13 +98,12 @@ function scheduleNote(noteData, time) {
         const osc = actx.createOscillator();
         const env = actx.createGain();
         osc.type = 'square';
-        osc.frequency.value = FREQ[note];
+        osc.frequency.setValueAtTime(FREQ[note], time);
         osc.connect(env);
         env.connect(musicGain);
         env.gain.setValueAtTime(0, time);
-        env.gain.linearRampToValueAtTime(1, time + 0.01);
-        env.gain.setValueAtTime(1, time + dur * 0.75);
-        env.gain.linearRampToValueAtTime(0, time + dur * 0.92);
+        env.gain.linearRampToValueAtTime(0.6, time + 0.005);
+        env.gain.exponentialRampToValueAtTime(0.001, time + dur - 0.005);
         osc.start(time);
         osc.stop(time + dur);
     }
@@ -144,12 +143,17 @@ export const AudioManager = {
         scheduler();
     },
     pauseMusic() {
-        if (!actx) return;
-        musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.2);
+        if (!actx || !musicActive) return;
+        musicActive = false;
+        clearTimeout(melodyTimer);
+        musicGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
     },
     resumeMusic() {
-        if (!actx || musicMuted) return;
-        musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.2);
+        if (!actx || musicMuted || musicActive || !currentMelody) return;
+        musicActive = true;
+        nextNoteTime = actx.currentTime + 0.05;
+        musicGain.gain.setTargetAtTime(musicVol, actx.currentTime, 0.1);
+        scheduler();
     },
     stopMusic() {
         musicActive = false;
@@ -163,6 +167,7 @@ export const AudioManager = {
         switch (type) {
             case 'move':    tone(220, now, 0.04, 'sine', 0.08); break;
             case 'rotate':  tone(440, now, 0.06, 'sine', 0.10); break;
+            case 'harddrop': tone(80, now, 0.12, 'sine', 0.40); break;
             case 'land':    tone(110, now, 0.10, 'sine', 0.12); break;
             case 'clear': {
                 const freqs = [523, 659, 784, 1047, 1319];
