@@ -504,8 +504,7 @@ function loop(timestamp) {
     if (comboTimer > 0) comboTimer -= delta;
     if (b2bTimer > 0) b2bTimer -= delta;
     gameElapsedTime += delta;
-    updateAnimations(delta);
-
+    updateAnimations(delta, level);
     // Handle DAS/ARR for horizontal movement
     if (activeKeys.left) {
         activeKeys.left.timeHeld += delta;

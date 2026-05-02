@@ -1,4 +1,4 @@
-import { CELL, PIECES, COLORS, ROWS, COLS, LEVEL_THEMES, BPM } from './constants.js';
+import { CELL, PIECES, COLORS, ROWS, COLS, LEVEL_THEMES, BPM, STAR_COUNT } from './constants.js';
 
 export function drawCell(context, r, c, color, alpha = 1) {
     const x = c * CELL + 1, y = r * CELL + 1, s = CELL - 2;
@@ -70,6 +70,13 @@ export function drawNextQueue(context, canvasObj, queue) {
 let shakeTimer = 0;
 let shakeIntensity = 0;
 
+const stars = Array.from({ length: STAR_COUNT }, () => ({
+    x: Math.random() * (COLS * CELL),
+    y: Math.random() * (ROWS * CELL),
+    size: Math.random() * 1.5 + 0.5,
+    speed: Math.random() * 0.02 + 0.01
+}));
+
 export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false) {
     const theme = LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
 
@@ -80,6 +87,39 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
     
     ctx.fillStyle = theme.bg;
     ctx.fillRect(-20, -20, ctx.canvas.width + 40, ctx.canvas.height + 40);
+
+    // Nebula clouds
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    
+    // Drifting radial gradients to create nebula effect based on level theme
+    const x1 = w * 0.2 + Math.cos(totalTime * 0.0003) * 60;
+    const y1 = h * 0.3 + Math.sin(totalTime * 0.0005) * 80;
+    const g1 = ctx.createRadialGradient(x1, y1, 0, x1, y1, w * 0.8);
+    g1.addColorStop(0, theme.accent + '44'); // Subtle 8-digit hex transparency
+    g1.addColorStop(1, 'transparent');
+    ctx.fillStyle = g1;
+    ctx.fillRect(-20, -20, w + 40, h + 40);
+
+    const x2 = w * 0.8 + Math.sin(totalTime * 0.0004) * 70;
+    const y2 = h * 0.7 + Math.cos(totalTime * 0.0002) * 50;
+    const g2 = ctx.createRadialGradient(x2, y2, 0, x2, y2, w * 0.7);
+    g2.addColorStop(0, theme.accent + '33');
+    g2.addColorStop(1, 'transparent');
+    ctx.fillStyle = g2;
+    ctx.fillRect(-20, -20, w + 40, h + 40);
+    ctx.restore();
+
+    // Draw Starfield
+    ctx.fillStyle = '#ffffff';
+    stars.forEach(s => {
+        // parralax effect: faster stars are brighter/closer
+        ctx.globalAlpha = s.speed * 30;
+        ctx.fillRect(s.x, s.y, s.size, s.size);
+    });
+    ctx.globalAlpha = 1;
 
     ctx.strokeStyle = theme.grid;
     ctx.lineWidth = 1;
@@ -260,10 +300,17 @@ export function triggerShake(intensity, duration) {
     shakeTimer = duration;
 }
 
-export function updateAnimations(delta) {
+export function updateAnimations(delta, level = 1) {
     totalTime += delta;
     if (shakeTimer > 0) shakeTimer -= delta;
     updateParticles(delta);
+
+    // Update Starfield
+    const speedMult = 1 + (level - 1) * 0.2;
+    stars.forEach(s => {
+        s.y += s.speed * delta * speedMult;
+        if (s.y > ROWS * CELL) s.y -= ROWS * CELL;
+    });
 }
 
 export function updateParticles(delta) {

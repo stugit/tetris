@@ -105,3 +105,5 @@ export const LEVEL_THEMES = [
     { bg: '#1c1c0b', accent: '#5c5c3b', grid: 'rgba(255, 255, 100, 0.06)' }, // Amber
     { bg: '#110b1c', accent: '#443b5c', grid: 'rgba(200, 100, 255, 0.06)' }  // Indigo
 ];
+
+export const STAR_COUNT = 100;
