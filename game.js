@@ -451,7 +451,7 @@ function startGame() {
             loadGame(JSON.parse(saved));
             updateUI();
         } catch (e) {
-            console.error("Failed to load save", e);
+            console.error('Failed to load save', e);
             initGame();
         }
     } else {
