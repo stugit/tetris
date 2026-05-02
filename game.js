@@ -412,7 +412,7 @@ function ghostPiece() {
 }
 
 function draw() {
-    drawBoard(ctx, board, currentPiece, cells(ghostPiece()), level, zenMode, showGhost);
+    drawBoard(ctx, board, currentPiece, cells(ghostPiece()), level, zenMode, showGhost, lockPending, lockTimer);
     drawNextQueue(nextCtx, nextCanvas, nextQueue);
     drawPreview(holdCtx, holdCanvas, holdType, holdUsed);
     if (levelUpTimer > 0) drawLevelUp(ctx, levelUpTimer);
@@ -450,7 +450,7 @@ function startGame() {
             loadGame(JSON.parse(saved));
             updateUI();
         } catch (e) {
-            console.error('Failed to load save', e);
+            console.error("Failed to load save", e);
             initGame();
         }
     } else {

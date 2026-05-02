@@ -77,7 +77,7 @@ const stars = Array.from({ length: STAR_COUNT }, () => ({
     speed: Math.random() * 0.02 + 0.01
 }));
 
-export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false, showGhost = true) {
+export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false, showGhost = true, lockPending = false, lockTimer = 0) {
     const theme = zenMode 
         ? { bg: '#110b1c', accent: '#c084fc', grid: 'rgba(192, 132, 252, 0.08)' }
         : LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
@@ -108,6 +108,14 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
             PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
                 drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
             });
+
+            // Lock delay flash effect: Pulsing white highlight
+            if (lockPending) {
+                const flashAlpha = Math.sin(lockTimer * 0.03) * 0.3 + 0.3;
+                PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
+                    drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, '#ffffff', flashAlpha);
+                });
+            }
         }
         targetCtx.restore();
     };

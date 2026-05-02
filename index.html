@@ -10,28 +10,10 @@
     <div id="wrapper">
         <h1>TETRIS</h1>
         <div id="game-area">
-            <div id="canvas-container">
-                <canvas id="board" width="300" height="600"></canvas>
-                <div id="overlay">
-                    <p id="overlay-msg">Tap or press Space to Start</p>
-                </div>
-            </div>
-            <div id="panel">
-                <div class="stat">
-                    <span class="label">SCORE</span>
-                    <span id="score">0</span>
-                </div>
+            <div id="left-panel">
                 <div class="stat">
                     <span class="label">BEST</span>
                     <span id="high-score">0</span>
-                </div>
-                <div class="stat">
-                    <span class="label">LEVEL</span>
-                    <span id="level">1</span>
-                </div>
-                <div class="stat">
-                    <span class="label">LINES</span>
-                    <span id="lines">0</span>
                 </div>
                 <div class="stat">
                     <span class="label">PPS</span>
@@ -44,26 +26,6 @@
                 <div id="hold-container">
                     <span class="label">HOLD</span>
                     <canvas id="hold" width="120" height="120"></canvas>
-                </div>
-                <div id="next-container">
-                    <span class="label">NEXT</span>
-                    <canvas id="next" width="120" height="360"></canvas>
-                </div>
-                <div id="controls">
-                    <p>← → &nbsp;&nbsp;Move</p>
-                    <p>↑ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rotate CW</p>
-                    <p>Z &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rotate CCW</p>
-                    <p>↓ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Soft drop</p>
-                    <p>Space &nbsp;Hard drop</p>
-                    <p>C / ⇧ &nbsp;&nbsp;Hold</p>
-                    <p>P &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pause</p>
-                    <p>M &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mute</p>
-                    <p class="gesture-hint">── touch ──</p>
-                    <p>Tap &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rotate</p>
-                    <p>Long tap &nbsp;Hold</p>
-                    <p>Swipe ↑ &nbsp;&nbsp;Hard drop</p>
-                    <p>Swipe ← →</p>
-                    <p>Swipe ↓ &nbsp;&nbsp;Soft drop</p>
                 </div>
                 <div id="settings">
                     <div class="setting-group">
@@ -92,6 +54,46 @@
                     <div class="setting-group">
                         <label class="setting-item"><input type="checkbox" id="ghost-check" checked> GHOST PIECE</label>
                     </div>
+                </div>
+            </div>
+            <div id="canvas-container">
+                <canvas id="board" width="300" height="600"></canvas>
+                <div id="overlay">
+                    <p id="overlay-msg">Tap or press Space to Start</p>
+                </div>
+            </div>
+            <div id="panel">
+                <div class="stat">
+                    <span class="label">SCORE</span>
+                    <span id="score">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">LEVEL</span>
+                    <span id="level">1</span>
+                </div>
+                <div class="stat">
+                    <span class="label">LINES</span>
+                    <span id="lines">0</span>
+                </div>
+                <div id="next-container">
+                    <span class="label">NEXT</span>
+                    <canvas id="next" width="120" height="360"></canvas>
+                </div>
+                <div id="controls">
+                    <p>← → &nbsp;&nbsp;Move</p>
+                    <p>↑ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rotate CW</p>
+                    <p>Z &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rotate CCW</p>
+                    <p>↓ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Soft drop</p>
+                    <p>Space &nbsp;Hard drop</p>
+                    <p>C / ⇧ &nbsp;&nbsp;Hold</p>
+                    <p>P &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pause</p>
+                    <p>M &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mute</p>
+                    <p class="gesture-hint">── touch ──</p>
+                    <p>Tap &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rotate</p>
+                    <p>Long tap &nbsp;Hold</p>
+                    <p>Swipe ↑ &nbsp;&nbsp;Hard drop</p>
+                    <p>Swipe ← →</p>
+                    <p>Swipe ↓ &nbsp;&nbsp;Soft drop</p>
                 </div>
             </div>
         </div>
