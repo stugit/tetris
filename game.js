@@ -1,6 +1,6 @@
 'use strict';
 
-import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY, LEVEL_THEMES } from './constants.js';
+import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, STORAGE_KEY_GHOST, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY, LEVEL_THEMES } from './constants.js';
 import { AudioManager } from './audio.js';
 import { drawBoard, drawPreview, drawNextQueue, updateUIElements, updateMetrics, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
 
@@ -28,7 +28,8 @@ const UI_ELEMENTS = {
     sdrSlider:  document.getElementById('sdr-slider'),
     pps:        document.getElementById('pps'),
     kpp:        document.getElementById('kpp'),
-    zenCheck:   document.getElementById('zen-check')
+    zenCheck:   document.getElementById('zen-check'),
+    ghostCheck: document.getElementById('ghost-check')
 };
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ let piecesSpawnedCount, keyStrokesCount, gameElapsedTime;
 
 // Configurable gameplay settings
 let lastKickIndex = 0;
-let das, arr, sdr, zenMode;
+let das, arr, sdr, zenMode, showGhost;
 let activeKeys = {}; // Tracks state of directional keys for DAS/ARR
 
 let lastMoveWasRotate = false;
@@ -410,7 +411,7 @@ function ghostPiece() {
 }
 
 function draw() {
-    drawBoard(ctx, board, currentPiece, cells(ghostPiece()), level, zenMode);
+    drawBoard(ctx, board, currentPiece, cells(ghostPiece()), level, zenMode, showGhost);
     drawNextQueue(nextCtx, nextCanvas, nextQueue);
     drawPreview(holdCtx, holdCanvas, holdType, holdUsed);
     if (levelUpTimer > 0) drawLevelUp(ctx, levelUpTimer);
@@ -747,6 +748,11 @@ UI_ELEMENTS.zenCheck.addEventListener('change', e => {
     localStorage.setItem(STORAGE_KEY_ZEN, zenMode);
 });
 
+UI_ELEMENTS.ghostCheck.addEventListener('change', e => {
+    showGhost = e.target.checked;
+    localStorage.setItem(STORAGE_KEY_GHOST, showGhost);
+});
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
 score                   = 0;
@@ -763,6 +769,8 @@ das                     = parseInt(localStorage.getItem(STORAGE_KEY_DAS) || DEFA
 arr                     = parseInt(localStorage.getItem(STORAGE_KEY_ARR) || DEFAULT_ARR, 10);
 sdr                     = parseInt(localStorage.getItem(STORAGE_KEY_SDR) || DEFAULT_SDR, 10);
 zenMode                 = localStorage.getItem(STORAGE_KEY_ZEN) === 'true';
+const savedGhost        = localStorage.getItem(STORAGE_KEY_GHOST);
+showGhost               = savedGhost === null ? true : savedGhost === 'true';
 highScore               = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
 
 const savedMusicVol = localStorage.getItem('tetrisMusicVol');
@@ -781,6 +789,7 @@ UI_ELEMENTS.dasSlider.value = das;
 UI_ELEMENTS.arrSlider.value = arr;
 UI_ELEMENTS.sdrSlider.value = sdr;
 UI_ELEMENTS.zenCheck.checked = zenMode;
+UI_ELEMENTS.ghostCheck.checked = showGhost;
 
 const savedState = localStorage.getItem(SAVE_KEY);
 if (savedState) {

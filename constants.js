@@ -74,6 +74,7 @@ export const STORAGE_KEY_DAS = 'tetrisDAS';
 export const STORAGE_KEY_ARR = 'tetrisARR';
 export const STORAGE_KEY_SDR = 'tetrisSDR';
 export const STORAGE_KEY_ZEN = 'tetrisZenMode';
+export const STORAGE_KEY_GHOST = 'tetrisShowGhost';
 
 export const SRS_KICKS = {
     '0-1': [[0, 0], [-1, 0], [-1, -1], [ 0,  2], [-1,  2]],

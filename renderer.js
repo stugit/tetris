@@ -77,7 +77,7 @@ const stars = Array.from({ length: STAR_COUNT }, () => ({
     speed: Math.random() * 0.02 + 0.01
 }));
 
-export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false) {
+export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMode = false, showGhost = true) {
     const theme = zenMode 
         ? { bg: '#110b1c', accent: '#c084fc', grid: 'rgba(192, 132, 252, 0.08)' }
         : LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
@@ -100,9 +100,11 @@ export function drawBoard(ctx, board, currentPiece, ghostCells, level = 1, zenMo
         }
 
         if (currentPiece) {
-            ghostCells.forEach(([r, c]) => {
-                drawCell(targetCtx, r, c, COLORS[currentPiece.type], 0.2);
-            });
+            if (showGhost) {
+                ghostCells.forEach(([r, c]) => {
+                    drawCell(targetCtx, r, c, COLORS[currentPiece.type], 0.2);
+                });
+            }
             PIECES[currentPiece.type][currentPiece.rotation].forEach(([r, c]) => {
                 drawCell(targetCtx, currentPiece.row + r, currentPiece.col + c, COLORS[currentPiece.type]);
             });
