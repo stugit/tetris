@@ -1,3 +1,10 @@
+## [1.16.2](https://github.com/stugit/tetris/compare/v1.16.1...v1.16.2) (2026-05-03)
+
+
+### Bug Fixes
+
+* layout alignment and spacebar scroll jump ([7034b4c](https://github.com/stugit/tetris/commit/7034b4c01f2513d2d0e90128749bc710ca271af7))
+
 ## [1.16.1](https://github.com/stugit/tetris/compare/v1.16.0...v1.16.1) (2026-05-03)
 
 
@@ -22,11 +29,4 @@
 ### Features
 
 * scale game up to fill desktop viewport ([80c7114](https://github.com/stugit/tetris/commit/80c711474bb3dca32c3a4ff521f3452d4987498b))
-
-## [1.13.0](https://github.com/stugit/tetris/compare/v1.12.0...v1.13.0) (2026-05-02)
-
-
-### Features
-
-* add TST setup warnings, mobile layout optimizations, and gapless audio scheduling ([1edb0b8](https://github.com/stugit/tetris/commit/1edb0b8a4f529425767e4fc3c29049ceeb83c73e))
 
