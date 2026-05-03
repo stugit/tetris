@@ -123,3 +123,25 @@ export const LEVEL_THEMES = [
 ];
 
 export const STAR_COUNT = 100;
+
+// Determines if the game is running in a local development environment
+const isLocal = [
+    'localhost',
+    '127.0.0.1',
+    '[::1]'
+].includes(window.location.hostname) || window.location.hostname.startsWith('192.168.');
+
+// Set this to `true` if you want to use the production Supabase instance even when running locally.
+const OVERRIDE_LOCAL_TO_PRODUCTION = false;
+
+export const SUPABASE_URL = isLocal 
+    ? (OVERRIDE_LOCAL_TO_PRODUCTION ? 'https://qifjlcmyafstvocfrzuc.supabase.co' : 'http://127.0.0.1:54321')
+    : 'https://qifjlcmyafstvocfrzuc.supabase.co';
+
+export const SUPABASE_KEY = isLocal 
+    ? (OVERRIDE_LOCAL_TO_PRODUCTION ? 'sb_publishable_WPRn4kT1aouwh0Msl_MB_Q_5PI9e8od' : 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH')
+    : 'sb_publishable_WPRn4kT1aouwh0Msl_MB_Q_5PI9e8od';
+
+export const GAME_ID = 'tetris-classic';
+// NOTE: This is visible to the client. Use only for basic integrity, not true security.
+export const SCORE_SALT = 'tetris-super-secret-salt-123';

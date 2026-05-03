@@ -1,8 +1,7 @@
-'use strict';
-
 import { ROWS, COLS, PIECES, PIECE_TYPES, SCORE_TABLE, TSPIN_SCORES, TSPIN_MINI_SCORES, BASE_SPEED, MIN_SPEED, SPEED_STEP, COLORS, STORAGE_KEY, PERFECT_CLEAR_BONUS, SRS_KICKS, SRS_KICKS_I, DEFAULT_DAS, DEFAULT_ARR, DEFAULT_SDR, STORAGE_KEY_DAS, STORAGE_KEY_ARR, STORAGE_KEY_SDR, STORAGE_KEY_ZEN, STORAGE_KEY_GHOST, STORAGE_KEY_KEYS, DEFAULT_KEYS, COMBO_BONUS, B2B_MULTIPLIER, SAVE_KEY, LEVEL_THEMES } from './constants.js';
 import { AudioManager } from './audio.js';
 import { drawBoard, drawPreview, drawNextQueue, updateUIElements, updateMetrics, drawLevelUp, drawPerfectClear, drawTSpin, drawCombo, drawB2B, createExplosion, drawParticles, clearParticles, triggerShake, updateAnimations } from './renderer.js';
+import { supabase, saveScore, getTopScores, getPersonalBest, signInWithGitHub, signOut } from './supabase-client.js';
 
 // ─── DOM ──────────────────────────────────────────────────────────────────────
 const canvas      = document.getElementById('board');
@@ -13,6 +12,10 @@ const holdCanvas  = document.getElementById('hold');
 const holdCtx     = holdCanvas.getContext('2d');
 const overlay     = document.getElementById('overlay');
 const overlayMsg  = document.getElementById('overlay-msg');
+const loginBtn    = document.getElementById('login-btn');
+const logoutBtn   = document.getElementById('logout-btn');
+const logoutGroup = document.getElementById('logout-group');
+const leaderboardContainer = document.getElementById('leaderboard-container');
 
 const UI_ELEMENTS = {
     score:     document.getElementById('score'),
@@ -37,6 +40,7 @@ let board, currentPiece, nextQueue, holdType, holdUsed;
 let score, highScore, level, linesCleared;
 let gameState;   // 'idle' | 'playing' | 'paused' | 'over'
 let dropTimer, lastTime, animId;
+let userSession = null;
 let lockPending, lockTimer, lockMoves;
 let levelUpTimer;
 let perfectClearTimer;
@@ -489,6 +493,13 @@ function startGame() {
     }
     gameState        = 'playing';
     overlay.style.display = 'none';
+    if (leaderboardContainer) leaderboardContainer.style.display = 'none';
+    
+    const valMsg = document.getElementById('validation-msg');
+    if (valMsg) {
+        valMsg.style.display = 'none';
+        valMsg.classList.remove('loading');
+    }
     lastTime         = null;
     animId           = requestAnimationFrame(loop);
     AudioManager.startMusic();
@@ -510,11 +521,40 @@ function pauseGame() {
     }
 }
 
-function gameOver() {
+async function gameOver() {
     gameState = 'over';
     cancelAnimationFrame(animId);
     AudioManager.stopMusic();
     AudioManager.sfx('gameover');
+
+    if (leaderboardContainer) {
+        leaderboardContainer.style.display = 'flex';
+        leaderboardContainer.innerHTML = '<p class="leaderboard-title">LOADING SCORES...</p>';
+    }
+
+    const valMsg = document.getElementById('validation-msg');
+    if (userSession) {
+        if (valMsg) {
+            valMsg.style.display = 'block';
+            valMsg.classList.add('loading');
+            valMsg.textContent = 'Validating score...';
+        }
+        
+        const result = await saveScore(score, linesCleared, level);
+        
+        if (valMsg) {
+            valMsg.classList.remove('loading');
+            valMsg.textContent = result?.success ? 'Score saved to leaderboard!' : `Error: ${result?.error || 'Validation failed'}`;
+        }
+    }
+
+    // Fetch and display global top scores & personal best
+    const [topScores, personalBest] = await Promise.all([
+        getTopScores(10),
+        getPersonalBest()
+    ]);
+    renderLeaderboard(topScores, personalBest);
+
     localStorage.removeItem(SAVE_KEY);
     if (score > highScore) {
         highScore = score;
@@ -525,6 +565,43 @@ function gameOver() {
     }
     updateUI();
     overlay.style.display = 'flex';
+}
+
+function renderLeaderboard(scores, personalBest) {
+    if (!leaderboardContainer) return;
+    
+    let html = '<p class="leaderboard-title">GLOBAL TOP 10</p>';
+    if (!scores || scores.length === 0) {
+        html += '<p class="leaderboard-empty">NO GLOBAL SCORES YET</p>';
+    } else {
+        const currentUserId = userSession?.user?.id;
+        scores.forEach((entry, index) => {
+            const isUser = currentUserId && entry.github_id === currentUserId;
+            html += `
+            <div class="leaderboard-entry${isUser ? ' is-user' : ''}">
+                <span class="leaderboard-rank">${index + 1}.</span>
+                <span class="leaderboard-name">${entry.username || 'Anonymous'}</span>
+                <span class="leaderboard-score">${entry.score.toLocaleString()}</span>
+            </div>
+        `;
+        });
+    }
+
+    if (userSession && personalBest !== null) {
+        const userName = userSession.user.user_metadata.full_name || userSession.user.user_metadata.user_name || 'YOU';
+        const userAvatar = userSession.user.user_metadata.avatar_url;
+        html += `
+            <div class="leaderboard-pb">
+                <p class="leaderboard-title">YOUR BEST</p>
+                <div class="leaderboard-entry">
+                    ${userAvatar ? `<img src="${userAvatar}" class="leaderboard-avatar" alt="${userName}'s avatar">` : ''}
+                    <span class="leaderboard-name">${userName}</span>
+                    <span class="leaderboard-score">${personalBest.toLocaleString()}</span>
+                </div>
+            </div>
+        `;
+    }
+    leaderboardContainer.innerHTML = html;
 }
 
 // ─── Game Loop ────────────────────────────────────────────────────────────────
@@ -776,6 +853,13 @@ UI_ELEMENTS.ghostCheck.addEventListener('change', e => {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 gameState               = 'idle';
 score                   = 0;
+
+supabase.auth.onAuthStateChange((_event, session) => {
+    userSession = session;
+    if (loginBtn) loginBtn.style.display = session ? 'none' : 'block';
+    if (logoutGroup) logoutGroup.style.display = session ? 'flex' : 'none';
+});
+
 level                   = 1;
 linesCleared            = 0;
 levelUpTimer            = 0;
@@ -812,6 +896,22 @@ UI_ELEMENTS.arrSlider.value = arr;
 UI_ELEMENTS.sdrSlider.value = sdr;
 UI_ELEMENTS.zenCheck.checked = zenMode;
 UI_ELEMENTS.ghostCheck.checked = showGhost;
+
+if (loginBtn) {
+    loginBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        signInWithGitHub();
+    });
+}
+
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.confirm('Are you sure you want to sign out?')) {
+            signOut();
+        }
+    });
+}
 
 const savedState = localStorage.getItem(SAVE_KEY);
 if (savedState) {

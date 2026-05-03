@@ -54,12 +54,18 @@
                     <div class="setting-group">
                         <label class="setting-item"><input type="checkbox" id="ghost-check" checked> GHOST PIECE</label>
                     </div>
+                    <div class="setting-group" id="logout-group" style="display: none;">
+                        <button id="logout-btn">SIGN OUT</button>
+                    </div>
                 </div>
             </div>
             <div id="canvas-container">
                 <canvas id="board" width="300" height="600"></canvas>
                 <div id="overlay">
                     <p id="overlay-msg">Tap or press Space to Start</p>
+                    <button id="login-btn" style="display: none;">LOGIN WITH GITHUB</button>
+                    <div id="leaderboard-container"></div>
+                    <p id="validation-msg" style="display: none; font-size: 0.9rem; margin-top: 15px; color: #888; font-style: italic;"></p>
                 </div>
             </div>
             <div id="panel">

@@ -1,2 +1,7 @@
 node_modules/
+.claude/
+.env
+.DS_Store
+*.local.json
 dist/
+.vscode/
