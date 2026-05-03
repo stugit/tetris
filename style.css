@@ -205,7 +205,14 @@ h1 {
     gap: 8px;
     background: #16213e;
     border: 1px solid #2a2a4a;
-    padding: 10px 12px;
+    padding: 10px 8px;
+}
+
+#hold {
+    display: block;
+    width: 90px;
+    height: 90px;
+    align-self: center;
 }
 
 #next {
@@ -214,13 +221,13 @@ h1 {
 }
 
 #controls {
-    position: fixed;
-    bottom: 14px;
-    right: 18px;
     font-size: 0.65rem;
     color: #404068;
     line-height: 1.8;
     pointer-events: none;
+    align-self: flex-end;
+    padding-bottom: 4px;
+    white-space: nowrap;
 }
 
 #settings {

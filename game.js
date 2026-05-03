@@ -666,11 +666,10 @@ function loop(timestamp) {
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-    if (e.repeat) return; // Ignore native key repeat
-
     const action = keyBindings[e.code];
     if (!action) return;
-    e.preventDefault();
+    e.preventDefault(); // prevent browser scroll/defaults for all bound keys, including repeats
+    if (e.repeat) return; // ignore native key repeat for game logic
 
     if (action === 'hardDrop') {
         if (gameState === 'idle' || gameState === 'over') startGame();
