@@ -12,47 +12,47 @@
         <div id="game-area">
             <div id="left-panel">
                 <div class="stat">
-                    <span class="label">BEST</span>
+                    <span class="label" data-tooltip="Your all-time high score">BEST</span>
                     <span id="high-score">0</span>
                 </div>
                 <div class="stat">
-                    <span class="label">PPS</span>
+                    <span class="label" data-tooltip="Pieces Per Second — how fast you're placing pieces">PPS</span>
                     <span id="pps">0.00</span>
                 </div>
                 <div class="stat">
-                    <span class="label">KPP</span>
+                    <span class="label" data-tooltip="Keys Per Piece — input efficiency (lower is better)">KPP</span>
                     <span id="kpp">0.00</span>
                 </div>
                 <div id="hold-container">
-                    <span class="label">HOLD</span>
+                    <span class="label" data-tooltip="Hold a piece to use later (C or Shift)">HOLD</span>
                     <canvas id="hold" width="120" height="120"></canvas>
                 </div>
                 <div id="settings">
                     <div class="setting-group">
-                        <label class="setting-item"><input type="checkbox" id="music-check" checked> MUSIC</label>
+                        <label class="setting-item" data-tooltip="Toggle background music"><input type="checkbox" id="music-check" checked> MUSIC</label>
                         <input type="range" id="music-vol" min="0" max="1" step="0.05" value="0.4">
                     </div>
                     <div class="setting-group">
-                        <label class="setting-item"><input type="checkbox" id="sfx-check" checked> SFX</label>
+                        <label class="setting-item" data-tooltip="Toggle sound effects"><input type="checkbox" id="sfx-check" checked> SFX</label>
                         <input type="range" id="sfx-vol" min="0" max="1" step="0.05" value="1.0">
                     </div>
                     <div class="setting-group">
-                        <label class="setting-item">DAS (ms)</label>
+                        <label class="setting-item" data-tooltip="Delayed Auto-Shift — delay (ms) before a held key starts repeating">DAS (ms)</label>
                         <input type="range" id="das-slider" min="0" max="300" step="10" value="150">
                     </div>
                     <div class="setting-group">
-                        <label class="setting-item">ARR (ms)</label>
+                        <label class="setting-item" data-tooltip="Auto-Repeat Rate — speed (ms) of movement while a key is held">ARR (ms)</label>
                         <input type="range" id="arr-slider" min="0" max="100" step="5" value="30">
                     </div>
                     <div class="setting-group">
-                        <label class="setting-item">SDR (x)</label>
+                        <label class="setting-item" data-tooltip="Soft Drop Rate — downward speed multiplier when pressing ↓">SDR (x)</label>
                         <input type="range" id="sdr-slider" min="1" max="50" step="1" value="20">
                     </div>
                     <div class="setting-group">
-                        <label class="setting-item"><input type="checkbox" id="zen-check"> ZEN MODE</label>
+                        <label class="setting-item" data-tooltip="Disable gravity — pieces won't fall on their own"><input type="checkbox" id="zen-check"> ZEN MODE</label>
                     </div>
                     <div class="setting-group">
-                        <label class="setting-item"><input type="checkbox" id="ghost-check" checked> GHOST PIECE</label>
+                        <label class="setting-item" data-tooltip="Show a shadow where the piece will land"><input type="checkbox" id="ghost-check" checked> GHOST PIECE</label>
                     </div>
                     <div class="setting-group" id="logout-group" style="display: none;">
                         <button id="logout-btn">SIGN OUT</button>
@@ -70,19 +70,19 @@
             </div>
             <div id="panel">
                 <div class="stat">
-                    <span class="label">SCORE</span>
+                    <span class="label" data-tooltip="Current game score">SCORE</span>
                     <span id="score">0</span>
                 </div>
                 <div class="stat">
-                    <span class="label">LEVEL</span>
+                    <span class="label" data-tooltip="Current level — increases every 10 lines cleared">LEVEL</span>
                     <span id="level">1</span>
                 </div>
                 <div class="stat">
-                    <span class="label">LINES</span>
+                    <span class="label" data-tooltip="Total lines cleared this game">LINES</span>
                     <span id="lines">0</span>
                 </div>
                 <div id="next-container">
-                    <span class="label">NEXT</span>
+                    <span class="label" data-tooltip="Upcoming pieces in the queue">NEXT</span>
                     <canvas id="next" width="120" height="360"></canvas>
                 </div>
             </div>
