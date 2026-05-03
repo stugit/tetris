@@ -1,3 +1,10 @@
+## [1.17.0](https://github.com/stugit/tetris/compare/v1.16.2...v1.17.0) (2026-05-03)
+
+
+### Features
+
+* add CSS tooltips to all stats and settings labels ([7de3bb9](https://github.com/stugit/tetris/commit/7de3bb9ffb38186b38c40acaad3d81ec25580ee3))
+
 ## [1.16.2](https://github.com/stugit/tetris/compare/v1.16.1...v1.16.2) (2026-05-03)
 
 
@@ -22,11 +29,4 @@
 * major audio quality upgrade — bass line, filter, vibrato, compressor ([d3b46fe](https://github.com/stugit/tetris/commit/d3b46fe510530b78d128085ce6315582ae837892))
 
 ## [1.15.0](https://github.com/stugit/tetris/compare/v1.14.0...v1.15.0) (2026-05-02)
-
-## [1.14.0](https://github.com/stugit/tetris/compare/v1.13.0...v1.14.0) (2026-05-02)
-
-
-### Features
-
-* scale game up to fill desktop viewport ([80c7114](https://github.com/stugit/tetris/commit/80c711474bb3dca32c3a4ff521f3452d4987498b))
 
