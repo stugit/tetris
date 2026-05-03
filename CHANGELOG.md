@@ -1,3 +1,18 @@
+## [1.16.0](https://github.com/stugit/tetris/compare/v1.15.0...v1.16.0) (2026-05-03)
+
+
+### Features
+
+* major audio quality upgrade — bass line, filter, vibrato, compressor ([d3b46fe](https://github.com/stugit/tetris/commit/d3b46fe))
+* authentic Theme B/C + richer audio synthesis ([39a31fc](https://github.com/stugit/tetris/commit/39a31fc))
+
+## [1.15.0](https://github.com/stugit/tetris/compare/v1.14.0...v1.15.0) (2026-05-03)
+
+
+### Refactors
+
+* move controls out of layout flow to fix 100vh fill ([2273c62](https://github.com/stugit/tetris/commit/2273c62))
+
 ## [1.14.0](https://github.com/stugit/tetris/compare/v1.13.0...v1.14.0) (2026-05-02)
 
 
