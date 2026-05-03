@@ -52,6 +52,7 @@ let piecesSpawnedCount, keyStrokesCount, gameElapsedTime;
 // Configurable gameplay settings
 let lastKickIndex = 0;
 let das, arr, sdr, zenMode, showGhost;
+let lastTimestamp = 0;
 let keyBindings = { ...DEFAULT_KEYS };
 let activeKeys = {}; // Tracks state of directional keys for DAS/ARR
 
@@ -609,6 +610,7 @@ function loop(timestamp) {
     if (gameState !== 'playing') return;
     const delta = lastTime ? timestamp - lastTime : 0;
     lastTime    = timestamp;
+    lastTimestamp = timestamp;
 
     if (levelUpTimer > 0) levelUpTimer -= delta;
     if (perfectClearTimer > 0) perfectClearTimer -= delta;
@@ -617,16 +619,18 @@ function loop(timestamp) {
     if (b2bTimer > 0) b2bTimer -= delta;
     gameElapsedTime += delta;
     updateAnimations(delta, level);
-    // Handle DAS/ARR for horizontal movement
+    // Handle DAS/ARR for horizontal movement.
+    // Cap inputDelta to das so a single slow frame can never trigger auto-repeat by itself.
+    const inputDelta = Math.min(delta, das);
     if (activeKeys.left) {
-        activeKeys.left.timeHeld += delta;
+        activeKeys.left.timeHeld += inputDelta;
         if (activeKeys.left.timeHeld >= das && (timestamp - activeKeys.left.lastActionTime) >= Math.max(16, arr)) {
             moveLeft();
             activeKeys.left.lastActionTime = timestamp;
         }
     }
     if (activeKeys.right) {
-        activeKeys.right.timeHeld += delta;
+        activeKeys.right.timeHeld += inputDelta;
         if (activeKeys.right.timeHeld >= das && (timestamp - activeKeys.right.lastActionTime) >= Math.max(16, arr)) {
             moveRight();
             activeKeys.right.lastActionTime = timestamp;
@@ -694,10 +698,10 @@ document.addEventListener('keydown', e => {
 
     if (action === 'left') {
         moveLeft();
-        activeKeys.left = { timeHeld: 0, lastActionTime: performance.now() };
+        activeKeys.left = { timeHeld: 0, lastActionTime: lastTimestamp };
     } else if (action === 'right') {
         moveRight();
-        activeKeys.right = { timeHeld: 0, lastActionTime: performance.now() };
+        activeKeys.right = { timeHeld: 0, lastActionTime: lastTimestamp };
     } else if (action === 'softDrop') {
         softDrop();
         activeKeys.softDrop = true;
