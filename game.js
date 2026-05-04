@@ -179,6 +179,9 @@ function spawnPiece() {
     piecesSpawnedCount++;
     currentPiece = { type, rotation: 0, row: 0, col: 3 };
     nextQueue.push(randomType());
+    // Reset DAS charge so held keys from the previous piece don't immediately move the new one
+    if (activeKeys.left)  { activeKeys.left.timeHeld  = 0; activeKeys.left.lastActionTime  = lastTimestamp; }
+    if (activeKeys.right) { activeKeys.right.timeHeld = 0; activeKeys.right.lastActionTime = lastTimestamp; }
     if (!isValid(currentPiece)) gameOver();
 }
 
@@ -758,12 +761,14 @@ canvas.addEventListener('touchend', e => {
 
 // Overlay covers the canvas when idle/paused/over, so touches land here, not canvas.
 overlay.addEventListener('touchstart', e => {
+    if (e.target.closest('#login-btn, #logout-btn')) return;
     e.preventDefault();
     touchX0 = e.touches[0].clientX;
     touchY0 = e.touches[0].clientY;
 }, { passive: false });
 
 overlay.addEventListener('touchend', e => {
+    if (e.target.closest('#login-btn, #logout-btn')) return;
     e.preventDefault();
     if (gameState === 'idle' || gameState === 'over') { startGame(); return; }
     if (gameState === 'paused') { pauseGame(); return; }
@@ -924,3 +929,30 @@ if (savedState) {
 updateUI();
 ctx.fillStyle           = '#1a1a2e';
 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+// ─── Tooltips ─────────────────────────────────────────────────────────────────
+const tooltipEl = document.createElement('div');
+tooltipEl.id = 'tooltip';
+document.body.appendChild(tooltipEl);
+
+document.querySelectorAll('[data-tooltip]').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+        tooltipEl.textContent = el.dataset.tooltip;
+        tooltipEl.style.display = 'block';
+        const rect = el.getBoundingClientRect();
+        const tw = tooltipEl.offsetWidth;
+        const th = tooltipEl.offsetHeight;
+        const margin = 8;
+        let x = rect.left + rect.width / 2 - tw / 2;
+        let y = rect.top - th - margin;
+        // Flip below element if not enough room above
+        if (y < margin) y = rect.bottom + margin;
+        // Clamp horizontally within viewport
+        x = Math.max(margin, Math.min(x, window.innerWidth - tw - margin));
+        tooltipEl.style.left = x + 'px';
+        tooltipEl.style.top = y + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+        tooltipEl.style.display = 'none';
+    });
+});
