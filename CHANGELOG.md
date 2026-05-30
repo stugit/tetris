@@ -1,3 +1,11 @@
+## [1.19.0](https://github.com/stugit/tetris/compare/v1.18.0...v1.19.0) (2026-05-30)
+
+
+### Features
+
+* print leaderboard ([b59f365](https://github.com/stugit/tetris/commit/b59f365b424d1f90c35317be224f60784d247ccf))
+* print leaderboard ([c95b53d](https://github.com/stugit/tetris/commit/c95b53d64e0e1aa99c773cc12d08192eb19d05fd))
+
 ## [1.18.0](https://github.com/stugit/tetris/compare/v1.17.1...v1.18.0) (2026-05-30)
 
 
@@ -25,11 +33,4 @@
 ### Bug Fixes
 
 * layout alignment and spacebar scroll jump ([7034b4c](https://github.com/stugit/tetris/commit/7034b4c01f2513d2d0e90128749bc710ca271af7))
-
-## [1.16.1](https://github.com/stugit/tetris/compare/v1.16.0...v1.16.1) (2026-05-03)
-
-
-### Bug Fixes
-
-* prevent stutter-triggered DAS auto-repeat on quick key taps ([2d85930](https://github.com/stugit/tetris/commit/2d85930dd85a18796be78fa9e76ca94ff85219c2))
 
