@@ -1,3 +1,10 @@
+## [1.17.1](https://github.com/stugit/tetris/compare/v1.17.0...v1.17.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* allow GitHub login button to receive touch events on mobile ([a609781](https://github.com/stugit/tetris/commit/a6097815a5a5c184773a85cca692646f883495a2))
+
 ## [1.17.0](https://github.com/stugit/tetris/compare/v1.16.2...v1.17.0) (2026-05-03)
 
 
@@ -27,6 +34,4 @@
 * add global leaderboard with GitHub OAuth and score validation ([8e61dc9](https://github.com/stugit/tetris/commit/8e61dc97b0f4ab5bfb2508d12ef568e5f77f863b))
 * authentic Theme B/C + richer audio synthesis ([39a31fc](https://github.com/stugit/tetris/commit/39a31fcf25464720b7fecd486b174099eb870ada))
 * major audio quality upgrade — bass line, filter, vibrato, compressor ([d3b46fe](https://github.com/stugit/tetris/commit/d3b46fe510530b78d128085ce6315582ae837892))
-
-## [1.15.0](https://github.com/stugit/tetris/compare/v1.14.0...v1.15.0) (2026-05-02)
 
