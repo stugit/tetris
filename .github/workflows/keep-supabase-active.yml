@@ -1,0 +1,17 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # Runs every 5 days (stays well under 7-day inactivity threshold)
+    - cron: '0 0 */5 * *'
+  workflow_dispatch:
+
+jobs:
+  keep-active:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -X GET https://qifjlcmyafstvocfrzuc.supabase.co/rest/v1/leaderboard?limit=1 \
+            -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}"
