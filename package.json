@@ -8,6 +8,6 @@
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "supabase": "^2.98.0"
+    "supabase": "^2.107.0"
   }
 }
